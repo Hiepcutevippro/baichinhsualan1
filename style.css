@@ -1,0 +1,226 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --font-primary: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --scrollbar-track: #F4F9F9;
+    --brand-blue: #2FBF9A;
+    /* shifted greener */
+    --brand-mint: #7EE3C6;
+    /* lighter mint */
+    --brand-dark: #67ffde;
+    /* deeper green */
+    --brand-surface: #F4F9F9;
+    --scrollbar-thumb: var(--brand-mint);
+    --navy: #41b0d1;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    width: 100%;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-primary);
+    overflow-x: hidden;
+    margin: 0;
+    min-height: 100vh;
+}
+
+/* Make links to brand colors easier */
+.brand-gradient {
+    background-image: linear-gradient(90deg, var(--brand-blue), var(--brand-mint));
+}
+
+.text-brand {
+    color: var(--brand-dark);
+}
+
+.bg-brand-surface {
+    background: var(--brand-surface);
+}
+
+.bg-brand-blue {
+    background: var(--brand-blue);
+}
+
+.bg-brand-mint {
+    background: var(--brand-mint);
+}
+
+.text-brand-blue {
+    color: var(--brand-blue);
+}
+
+.text-brand-dark {
+    color: var(--brand-dark);
+}
+
+/* Question navigation grid: 2 rows of 18 (desktop), responsive to 9 columns on small screens */
+.nav-grid {
+    display: grid;
+    grid-template-columns: repeat(18, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .nav-grid {
+        grid-template-columns: repeat(9, minmax(0, 1fr));
+    }
+}
+
+.nav-box {
+    position: relative;
+    z-index: 10;
+    border: 2px solid rgba(11, 61, 145, 0.08);
+    background: #87CEEB;
+    /* xanh da troi */
+    border-radius: 12px;
+    padding: 0.5rem;
+    color: var(--navy);
+}
+
+.nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    background: transparent;
+    color: #000;
+    border: 1px solid rgba(11, 61, 145, 0.08);
+}
+
+/* nav button states inside navy box */
+.nav-btn-default {
+    background: transparent;
+    color: #000;
+    border-color: rgba(11, 61, 145, 0.06);
+}
+
+.nav-btn-answered {
+    background: rgba(11, 61, 145, 0.06);
+    color: #000;
+    border-color: rgba(11, 61, 145, 0.08);
+}
+
+.nav-btn-active {
+    background: rgba(11, 61, 145, 0.12);
+    color: #000;
+    border-color: rgba(11, 61, 145, 0.14);
+    font-weight: 700;
+}
+
+/* Box surrounding the question grid */
+.nav-btn {
+    position: relative;
+    z-index: 20;
+}
+
+@media (max-width: 768px) {
+    .nav-box {
+        padding: 0.4rem;
+    }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 10px;
+}
+
+/* Auth Tab Styling */
+.auth-tab {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.auth-tab.active {
+    color: #6BA4CC;
+}
+
+.auth-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #6BA4CC;
+    border-radius: 2px;
+}
+
+/* Charts */
+.chart-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+}
+
+.donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    text-align: center;
+}
+
+/* Layout overrides */
+.result-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 80px);
+    padding: 1rem;
+    background: #F4F9F9;
+}
+
+.quiz-page {
+    background: linear-gradient(180deg, #F4F9F9 0%, #FFFFFF 100%);
+}
+
+/* Disable shake/vibrate animations and unintended transforms */
+.shake,
+.rung,
+.vibrate,
+.wiggle,
+.animate-shake,
+.shake-x,
+.shake-y {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+}
+
+/* Disable any tailwind animate-* classes that might cause movement */
+.animate-fade-in,
+.animate-slide-up,
+.animate-* {
+    animation: none !important;
+}
+
+/* Fallback: prevent any keyframe-based shaking */
+* {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+}
