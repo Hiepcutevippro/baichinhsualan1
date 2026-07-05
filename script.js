@@ -42,7 +42,7 @@ const DASS_QUESTIONS = [
     { id: 'dass-4', text: 'Bạn bị rối loạn nhịp thở (thở gấp, khó thở dù chẳng làm việc gì nặng)', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
     { id: 'dass-5', text: 'Bạn thấy khó bắt tay vào công việc', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
     { id: 'dass-6', text: 'Bạn có xu hướng phản ứng thái quá với mọi tình huống', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
-    { id: 'dass-7', text: 'Bạn bị ra mồ hôi (chẳng hạn như mồ hôi tay...)', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
+    { id: 'dass-7', text: 'Bạn dễ đổ mồ hôi (chẳng hạn như mồ hôi tay...)', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
     { id: 'dass-8', text: 'Bạn thấy mình đang suy nghĩ quá nhiều', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
     { id: 'dass-9', text: 'Bạn lo lắng về những tình huống có thể làm bạn hoảng sợ hoặc biến bạn thành trò cười', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
     { id: 'dass-10', text: 'Bạn thấy mình chẳng có gì để mong đợi cả', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21' },
