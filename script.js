@@ -292,7 +292,7 @@ function renderAuth() {
     const isLogin = authMode === 'login';
     const cloudBadge = supabaseReady
         ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest"><i data-lucide="cloud" class="w-3 h-3"></i> Supabase Cloud</span>'
-        : '<span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[10px] font-bold text-amber-700 uppercase tracking-widest"><i data-lucide="hard-drive" class="w-3 h-3"></i> Chế độ Offline</span>';
+        : '';
     return `
     <div class="flex-1 flex items-center justify-center px-4 py-12 animate-fade-in bg-brand-surface">
         <div class="w-full max-w-md bg-white rounded-[2rem] p-8 shadow-xl shadow-teal-100/50 border border-teal-50">
