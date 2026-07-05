@@ -217,7 +217,7 @@ async function saveResult(scores) {
         if (currentUser?.id) record.user_id = currentUser.id;
         const { error } = await db.from('survey_results').insert([record]);
         if (error) console.error('Lỗi lưu Supabase:', error.message);
-        else console.log('✅ Đã lưu kết quả lên Supabase Cloud!');
+        else console.log('✅ Đã lưu kết quả lên máy chủ!');
     }
     // Luôn lưu localStorage để có fallback
     communityStats.count += 1;
@@ -477,7 +477,7 @@ function renderResult() {
     }).join('');
     const cloudMsg = supabaseReady
         ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-2 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-4 h-4"></i> Kết quả đã lưu lên Supabase Cloud</span>'
-        : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700"><i data-lucide="hard-drive" class="w-4 h-4"></i> Kết quả lưu trên máy (offline)</span>';
+        : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700"><i data-lucide="hard-drive" class="w-4 h-4"></i> Kết quả lưu trên máy chủ</span>';
     const div = communityStats.count > 0 ? communityStats.count : 1;
     return `
         <section class="mx-auto flex flex-col w-full max-w-4xl gap-6 px-4 py-8 animate-fade-in">
