@@ -391,8 +391,8 @@ function renderHeader() {
     if (currentUser) {
         const displayName = getFirstName(currentUser.name);
         const avatarUrl = currentUser.isIncognito
-            ? 'https://api.dicebear.com/7.x/shapes/svg?seed=' + currentUser.name + '&backgroundColor=6BA4CC'
-            : 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + currentUser.name + '&backgroundColor=6BA4CC';
+            ? 'https://api.dicebear.com/10.x/big-ears/svg?seed=empn5xvz' + currentUser.name + '&backgroundColor=6BA4CC'
+            : 'https://api.dicebear.com/10.x/avataaars/svg?seed=8j8c4vl3' + currentUser.name + '&backgroundColor=6BA4CC';
         const isIncognito = currentUser.isIncognito;
         userHtml = `
                 <div class="flex items-center gap-2 md:gap-3 bg-white rounded-full pr-3 pl-1.5 py-1.5 border border-sky-100 shadow-sm">
