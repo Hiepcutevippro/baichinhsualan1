@@ -445,9 +445,10 @@ function renderStart() {
                             Hệ thống đánh giá chuyên sâu giúp bạn hiểu rõ mức độ Căng thẳng, Lo âu, Trầm cảm và Kiệt quệ.
                             Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng thang đo chuẩn hoá DASS-21 để đánh giá Căng thẳng, Lo âu và Trầm cảm, cùng thang đo MBI-SS để đánh giá Kiệt quệ học đường.
                         </p>
+                        ${currentUser?.isIncognito ? `
                         <p class="mt-4 text-sm leading-6 text-slate-500">
-                            Dữ liệu được mã hóa ẩn danh để phục vụ thống kê sức khỏe tâm lý chung.
-                        </p>
+                            Dữ liệu được mã hóa ẩn danh.
+                        </p>` : ''}
                     </div>
                     <div class="mt-6 grid gap-4 sm:grid-cols-2 w-full max-w-2xl">
                         <div class="rounded-3xl border border-brand-blue/20 bg-brand-blue/10 p-5 text-center shadow-sm">
