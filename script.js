@@ -73,16 +73,29 @@ const MBI_QUESTIONS = [
     { id: 'mbi-15', text: 'Bạn tin rằng mình đóng góp một cách hiệu quả vào các lớp học mà mình tham gia.', scale: MBI_SCALE, sectionTitle: 'Phần 2 — MBI-SS', section: 'MBI-SS' }
 ];
 
-function shuffleArray(arr) {
-    const shuffled = [...arr];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-}
+// Câu hỏi nhiễu (kiểm định nhất quán câu trả lời) - CHỈ dùng để đối chiếu độ tin cậy,
+// KHÔNG được cộng vào bất kỳ nhóm điểm nào bên dưới (DASS_STRESS/ANXIETY/DEPRESSION, MBI_...).
+// Nhờ vậy hàm getSum() tự động bỏ qua các câu này khi tính điểm.
+const DASS_NOISE_QUESTIONS = [
+    { id: 'dass-noise-1', text: 'Bạn chưa bao giờ để những thất bại hay rắc rối cá nhân làm ảnh hưởng đến tinh thần hoặc giấc ngủ của mình quá một ngày', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
+    { id: 'dass-noise-2', text: 'Bạn vẫn tìm thấy những nguồn năng lượng tích cực và sự bình yên trong các hoạt động hằng ngày', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
+    { id: 'dass-noise-3', text: 'Đôi khi bạn cảm thấy bực mình hoặc khó chịu vì những chuyện nhỏ nhặt.', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
+    { id: 'dass-noise-4', text: 'Đôi khi bạn cảm thấy hụt hẫng hoặc có chút thất vọng khi những nỗ lực của bản thân không đem lại kết quả như kỳ vọng', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true }
+];
+const MBI_NOISE_QUESTIONS = [
+    { id: 'mbi-noise-1', text: 'Bạn hiếm khi phải thức khuya hay hy sinh thời gian ngủ của mình để cố làm cho xong các bài tập được giao', scale: MBI_SCALE, sectionTitle: 'Phần 2 — MBI-SS', section: 'MBI-SS', isNoise: true },
+    { id: 'mbi-noise-2', text: 'Bạn chưa bao giờ cảm thấy chạnh lòng hay áp lực khi thấy các bạn xung quanh đạt điểm số cao hơn mình.', scale: MBI_SCALE, sectionTitle: 'Phần 2 — MBI-SS', section: 'MBI-SS', isNoise: true },
+    { id: 'mbi-noise-3', text: 'Chỉ cần một khoảng nghỉ ngắn giữa giờ cũng đủ để bạn lấy lại tinh thần thoải mái cho các tiết học tiếp theo.', scale: MBI_SCALE, sectionTitle: 'Phần 2 — MBI-SS', section: 'MBI-SS', isNoise: true }
+];
 
-let QUESTIONS = shuffleArray([...DASS_QUESTIONS, ...MBI_QUESTIONS]).map((q, idx) => ({ ...q, order: idx + 1 }));
+// Thứ tự hiển thị cuối cùng: DASS-21 gốc + 4 câu nhiễu xen vào đúng vị trí 5, 11, 16, 22 (=> 25 câu)
+// và MBI-SS gốc + 3 câu nhiễu xen vào đúng vị trí 4, 9, 15 (=> 18 câu).
+const DASS_ORDER_IDS = ['dass-1', 'dass-2', 'dass-3', 'dass-4', 'dass-noise-1', 'dass-5', 'dass-6', 'dass-7', 'dass-8', 'dass-9', 'dass-noise-2', 'dass-10', 'dass-11', 'dass-12', 'dass-13', 'dass-noise-3', 'dass-14', 'dass-15', 'dass-16', 'dass-17', 'dass-18', 'dass-noise-4', 'dass-19', 'dass-20', 'dass-21'];
+const MBI_ORDER_IDS = ['mbi-1', 'mbi-2', 'mbi-3', 'mbi-noise-1', 'mbi-4', 'mbi-5', 'mbi-6', 'mbi-7', 'mbi-noise-2', 'mbi-8', 'mbi-9', 'mbi-10', 'mbi-11', 'mbi-12', 'mbi-noise-3', 'mbi-13', 'mbi-14', 'mbi-15'];
+const ALL_QUESTIONS_BY_ID = {};
+[...DASS_QUESTIONS, ...DASS_NOISE_QUESTIONS, ...MBI_QUESTIONS, ...MBI_NOISE_QUESTIONS].forEach(q => { ALL_QUESTIONS_BY_ID[q.id] = q; });
+
+let QUESTIONS = [...DASS_ORDER_IDS, ...MBI_ORDER_IDS].map((id, idx) => ({ ...ALL_QUESTIONS_BY_ID[id], order: idx + 1 }));
 
 // Logic nhóm điểm
 const DASS_STRESS = ['dass-1', 'dass-6', 'dass-8', 'dass-11', 'dass-12', 'dass-14', 'dass-18'];
@@ -327,6 +340,72 @@ function getAdvice(label) {
     }
 }
 
+// ===== BỔ SUNG: Trạng thái tinh thần tổng quát + thước đo ngang (không thay đổi logic tính điểm gốc) =====
+const SEVERITY_LEVELS = ['Bình thường', 'Nhẹ', 'Vừa', 'Nặng', 'Rất nặng'];
+const severityRank = (label) => SEVERITY_LEVELS.indexOf(label);
+
+// Lấy mức độ nặng nhất trong 3 chỉ số Stress/Lo âu/Trầm cảm => đại diện cho "Trạng thái tinh thần tổng quát"
+function getOverallMentalState(scores) {
+    const rows = [{ id: 'stress' }, { id: 'anxiety' }, { id: 'depression' }];
+    const configs = rows.map(r => ({ id: r.id, config: getLevelConfig(r.id, scores[r.id]) }));
+    return configs.reduce((worst, cur) => severityRank(cur.config.label) > severityRank(worst.config.label) ? cur : worst);
+}
+
+// % nguy cơ kiệt sức học đường MBI-SS (cùng công thức với biểu đồ donut, tách riêng để không đụng vào initDonutChart gốc)
+function getMbiRiskPct(scores) {
+    const exhaustion = scores.emotionalExhaustion;
+    const cynicism = scores.cynicism;
+    const lowEfficacy = 36 - scores.academicEfficacy;
+    const maxTotal = 30 + 24 + 36;
+    return Math.round(((exhaustion + cynicism + lowEfficacy) / maxTotal) * 100);
+}
+
+function getMbiLevelConfig(riskPct) {
+    let label = 'Bình thường';
+    if (riskPct >= 85) label = 'Rất nặng'; else if (riskPct >= 65) label = 'Nặng';
+    else if (riskPct >= 45) label = 'Vừa'; else if (riskPct >= 25) label = 'Nhẹ';
+    if (label === 'Bình thường') return { label, hex: '#10B981' };
+    if (label === 'Nhẹ') return { label, hex: THEME.primary };
+    if (label === 'Vừa') return { label, hex: '#F59E0B' };
+    return { label, hex: '#F43F5E' };
+}
+
+// Gộp 5 mức thành đúng 3 dải màu trực quan theo yêu cầu: Xanh lá / Vàng / Đỏ
+function getGaugeBandColor(label) {
+    if (label === 'Bình thường') return '#10B981';
+    if (label === 'Nặng' || label === 'Rất nặng') return '#F43F5E';
+    return '#F59E0B'; // Nhẹ, Vừa
+}
+
+// Vị trí con trỏ trên thước đo (đảm bảo luôn rơi đúng vào dải màu tương ứng với nhãn)
+const GAUGE_MARKER_POSITION = { 'Bình thường': 16, 'Nhẹ': 41, 'Vừa': 58, 'Nặng': 75, 'Rất nặng': 92 };
+
+function getClosingLine(label) {
+    switch (label) {
+        case 'Bình thường': return 'Hãy tiếp tục duy trì nhé!';
+        case 'Nhẹ': return 'Đừng quên dành thời gian nghỉ ngơi cho bản thân nhé!';
+        case 'Vừa': return 'Hãy quan tâm đến bản thân nhiều hơn trong thời gian tới nhé!';
+        default: return 'Đừng ngần ngại tìm kiếm sự hỗ trợ nhé, bạn không đơn độc đâu!';
+    }
+}
+
+function renderGaugeBar(title, label) {
+    const bandColor = getGaugeBandColor(label);
+    const pos = GAUGE_MARKER_POSITION[label];
+    return `<div class="rounded-2xl border border-slate-100 bg-white p-4">
+        <div class="flex items-center justify-between mb-3 gap-2">
+            <span class="text-xs font-black uppercase tracking-wider text-slate-500">${title}</span>
+            <span class="text-sm font-black" style="color:${bandColor}">${label}</span>
+        </div>
+        <div class="relative h-3 w-full rounded-full overflow-hidden" style="background: linear-gradient(90deg, #10B981 0%, #10B981 33%, #F59E0B 33%, #F59E0B 66%, #F43F5E 66%, #F43F5E 100%);">
+            <div class="absolute top-1/2 h-5 w-5 rounded-full bg-white shadow-md border-[3px]" style="left: ${pos}%; top: 50%; transform: translate(-50%, -50%); border-color: ${bandColor};"></div>
+        </div>
+        <div class="flex justify-between mt-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            <span>Bình thường</span><span>Nhẹ · Vừa</span><span>Nặng · Rất nặng</span>
+        </div>
+    </div>`;
+}
+
 function getFirstName(fullName) {
     if (!fullName) return '';
     const parts = fullName.trim().split(' ');
@@ -443,7 +522,7 @@ function renderStart() {
                     <div class="w-full max-w-2xl text-left">
                         <p class="mt-2 text-lg leading-8 text-slate-600 font-medium">
                             Hệ thống đánh giá chuyên sâu giúp bạn hiểu rõ mức độ Căng thẳng, Lo âu, Trầm cảm và Kiệt quệ.
-                            Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng thang đo chuẩn hoá DASS-21 để đánh giá Căng thẳng, Lo âu và Trầm cảm, cùng thang đo MBI-SS để đánh giá Kiệt quệ học đường.
+                            Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng nền tảng thang đo chuẩn hoá quốc tế DASS-21 và MBI-SS, kết hợp cùng các chỉ số kiểm định dữ liệu độc lập để đảm bảo tính khách quan.
                         </p>
                         ${currentUser?.isIncognito ? `
                         <p class="mt-4 text-sm leading-6 text-slate-500">
@@ -453,15 +532,17 @@ function renderStart() {
                     <div class="mt-6 grid gap-4 sm:grid-cols-2 w-full max-w-2xl">
                         <div class="rounded-3xl border border-brand-blue/20 bg-brand-blue/10 p-5 text-center shadow-sm">
                             <p class="text-sm font-semibold uppercase tracking-[0.22em] text-brand-dark">DASS-21</p>
-                            <p class="mt-3 text-3xl font-black text-brand-blue">21 câu</p>
+                            <p class="mt-3 text-3xl font-black text-brand-blue">25 câu</p>
+                            <p class="mt-1 text-[11px] font-semibold text-brand-dark/60">Đã gồm 4 câu kiểm định nhất quán</p>
                         </div>
                         <div class="rounded-3xl border border-brand-mint/20 bg-brand-mint/10 p-5 text-center shadow-sm">
                             <p class="text-sm font-semibold uppercase tracking-[0.22em] text-brand-dark">MBI-SS</p>
-                            <p class="mt-3 text-3xl font-black text-brand-blue">15 câu</p>
+                            <p class="mt-3 text-3xl font-black text-brand-blue">18 câu</p>
+                            <p class="mt-1 text-[11px] font-semibold text-brand-dark/60">Đã gồm 3 câu kiểm định nhất quán</p>
                         </div>
                     </div>
                     <p class="mt-6 text-lg leading-8 text-slate-600 max-w-2xl font-medium">
-                        Thời gian hoàn thành dự kiến: 3 phút
+                        Thời gian hoàn thành dự kiến: 4 - 5 phút
                     </p>
                     <div class="mt-10">
                         <button type="button" onclick="handleStart()" class="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-brand-blue to-brand-mint px-10 py-5 text-xl font-black text-white shadow-xl shadow-teal-200/80">
@@ -540,9 +621,40 @@ function renderResult() {
         ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-2 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-4 h-4"></i> Kết quả đã lưu lên Supabase Cloud</span>'
         : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700"><i data-lucide="hard-drive" class="w-4 h-4"></i> Kết quả lưu trên máy chủ</span>';
     const div = communityStats.count > 0 ? communityStats.count : 1;
+
+    // ==== BỔ SUNG: Trạng thái tổng quát (không thay đổi cách tính currentScores gốc) ====
+    const overallState = getOverallMentalState(currentScores); // mức nặng nhất trong Stress/Lo âu/Trầm cảm
+    const mbiRiskPct = getMbiRiskPct(currentScores);
+    const mbiLevel = getMbiLevelConfig(mbiRiskPct); // phân loại Năng lượng học tập từ MBI-SS
+    const adviceLabel = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? mbiLevel.label : overallState.config.label;
+    const adviceColor = getGaugeBandColor(adviceLabel);
+    const overviewHTML = `
+                    <div class="rounded-[2rem] border border-sky-100 bg-white p-6 md:p-8 shadow-xl shadow-sky-100/50">
+                        <div class="text-center mb-7">
+                            <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-4" style="background:${overallState.config.hex}1A; color:${overallState.config.hex}">
+                                <i data-lucide="${overallState.config.icon}" class="h-7 w-7"></i>
+                            </div>
+                            <p class="text-base md:text-xl font-bold text-slate-500">Cảm ơn bạn! Trạng thái tinh thần tổng quát của bạn đang ở mức</p>
+                            <p class="text-4xl md:text-5xl font-black mt-1 tracking-tight" style="color:${overallState.config.hex}">${overallState.config.label}</p>
+                            <p class="mt-3 text-base md:text-lg font-semibold text-slate-500">${getClosingLine(overallState.config.label)}</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            ${renderGaugeBar('Trạng thái Tinh thần Tổng quát', overallState.config.label)}
+                            ${renderGaugeBar('Năng lượng Học tập', mbiLevel.label)}
+                        </div>
+                        <div class="rounded-2xl border p-5 flex gap-3 items-start" style="border-color:${adviceColor}40; background:${adviceColor}0D;">
+                            <i data-lucide="lightbulb" class="h-5 w-5 shrink-0 mt-0.5" style="color:${adviceColor}"></i>
+                            <div>
+                                <p class="text-sm font-black mb-1" style="color:${adviceColor}">Lời khuyên dành cho bạn</p>
+                                <p class="text-sm leading-6 text-slate-600">${getAdvice(adviceLabel)}</p>
+                            </div>
+                        </div>
+                    </div>`;
+
     return `
                 <section class="mx-auto flex flex-col w-full max-w-4xl gap-6 px-4 py-8 animate-fade-in">
                     <div class="flex items-center justify-center">${cloudMsg}</div>
+                    ${overviewHTML}
                     <!-- MBI-SS -->
                     <div class="rounded-[2rem] border border-sky-100 bg-white p-6 shadow-xl shadow-sky-100/50">
                         <div class="mb-6 flex items-center justify-between">
@@ -628,9 +740,6 @@ async function handleSubmit() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function handleReset() {
-    QUESTIONS.length = 0;
-    const newArr = shuffleArray([...DASS_QUESTIONS, ...MBI_QUESTIONS]).map((q, idx) => ({ ...q, order: idx + 1 }));
-    QUESTIONS.push(...newArr);
     answers = {}; currentIndex = 0; step = 'start';
     renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' });
 }
