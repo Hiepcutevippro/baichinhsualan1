@@ -325,7 +325,7 @@ function getLevelConfig(scale, rawScore) {
         else if (score >= 12) label = 'Vừa'; else if (score >= 8) label = 'Nhẹ';
     }
     if (label === 'Bình thường') return { label, className: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500', hex: '#10B981', icon: 'smile' };
-    if (label === 'Nhẹ') return { label, className: 'border-sky-200 bg-sky-50 text-sky-800', dot: 'bg-sky-500', hex: THEME.primary, icon: 'meh' };
+    if (label === 'Nhẹ') return { label, className: 'border-sky-200 bg-sky-50 text-sky-800', dot: 'bg-sky-500', hex: '#0ea8f0', icon: 'meh' };
     if (label === 'Vừa') return { label, className: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500', hex: '#F59E0B', icon: 'frown' };
     return { label, className: 'border-rose-200 bg-rose-50 text-rose-900', dot: 'bg-rose-500', hex: '#F43F5E', icon: 'alert-triangle' };
 }
