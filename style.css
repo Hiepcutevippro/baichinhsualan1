@@ -1,21 +1,70 @@
-/* NỘI DUNG NÀY TƯƠNG ĐƯƠNG VỚI FILE style.css */
-/* ======================================================= */
+/* ============================================================
+   style.css — Khảo Sát Sức Khỏe Tâm Lý — THPT Gia Lộc
+   Toàn bộ chú thích bằng tiếng Việt
+   ============================================================ */
+
+/* ----- IMPORT FONT ----- */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
+/* ----- BIẾN MÀU GỐC (CSS VARIABLES) ----- */
 :root {
     --font-primary: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --scrollbar-track: #F4F9F9;
-    --brand-blue: #2FBF9A;
-    /* shifted greener */
-    --brand-mint: #7EE3C6;
-    /* lighter mint */
-    --brand-dark: #67ffde;
-    /* deeper green */
+
+    /* ===== MÀU THƯƠNG HIỆU ===== */
+    /* Màu xanh lam nhạt chủ đạo — dùng cho nút đăng nhập, nút bắt đầu, thanh tiến độ */
+    --brand-blue: #6BA4CC;
+
+    /* Màu xanh bạc hà — dùng làm gradient kết hợp với --brand-blue */
+    --brand-mint: #85D3C1;
+
+    /* Màu xanh đen đậm — dùng cho tiêu đề, text nổi bật */
+    --brand-dark: #000000;
+
+    /* Màu nền tổng thể của toàn bộ trang */
     --brand-surface: #F4F9F9;
-    --scrollbar-thumb: var(--brand-mint);
-    --navy: #41b0d1;
+
+    /* ===== MÀU BẢNG CÂU HỎI (NAVIGATION GRID) ===== */
+    /* Màu nền khung chứa các nút câu hỏi — xanh da trời nhạt */
+    --nav-box-bg: #DBEAFE;
+
+    /* Màu viền của khung chứa — xanh da trời vừa */
+    --nav-box-border: #93C5FD;
+
+    /* Màu nút câu hỏi MẶC ĐỊNH (chưa trả lời) — nền trong suốt */
+    --nav-btn-default-bg: transparent;
+
+    /* Màu chữ số nút MẶC ĐỊNH — xanh da trời đậm */
+    --nav-btn-default-color: #000000;
+
+    /* Màu viền nút MẶC ĐỊNH */
+    --nav-btn-default-border: #BFDBFE;
+
+    /* Màu nút ĐÃ TRẢ LỜI — nền xanh da trời vừa */
+    --nav-btn-answered-bg: #BFDBFE;
+
+    /* Màu chữ số nút ĐÃ TRẢ LỜI */
+    --nav-btn-answered-color: #ff0000;
+
+    /* Màu viền nút ĐÃ TRẢ LỜI */
+    --nav-btn-answered-border: #93C5FD;
+
+    /* Màu nút ĐANG CHỌN — xanh da trời đậm nổi bật */
+    --nav-btn-active-bg: #2563EB;
+
+    /* Màu chữ số nút ĐANG CHỌN — trắng */
+    --nav-btn-active-color: #FFFFFF;
+
+    /* Màu viền nút ĐANG CHỌN */
+    --nav-btn-active-border: #0044ff;
+
+    /* ===== MÀU THANH CUỘN ===== */
+    --scrollbar-track: #F4F9F9;
+    /* Màu nền của thanh cuộn */
+    --scrollbar-thumb: #85D3C1;
+    /* Màu của tay cầm thanh cuộn */
 }
 
+/* ----- RESET CƠ BẢN ----- */
 *,
 *::before,
 *::after {
@@ -35,13 +84,10 @@ body {
     min-height: 100vh;
 }
 
-/* Make links to brand colors easier */
+/* ----- TIỆN ÍCH MÀU THƯƠNG HIỆU ----- */
 .brand-gradient {
+    /* Gradient ngang từ xanh lam nhạt sang xanh bạc hà */
     background-image: linear-gradient(90deg, var(--brand-blue), var(--brand-mint));
-}
-
-.text-brand {
-    color: var(--brand-dark);
 }
 
 .bg-brand-surface {
@@ -64,74 +110,106 @@ body {
     color: var(--brand-dark);
 }
 
-/* Question navigation grid: 2 rows of 18 (desktop), responsive to 9 columns on small screens */
+/* ============================================================
+   BẢNG ĐIỀU HƯỚNG CÂU HỎI (NAVIGATION GRID)
+   — 42 câu chia thành 2 dòng, mỗi dòng 21 cột
+   — Màu sắc: xanh da trời (sky blue / Tailwind blue)
+   ============================================================ */
+
+/* Lưới điều hướng câu hỏi — 21 cột trên desktop (=> 42 câu = 2 dòng) */
 .nav-grid {
     display: grid;
-    grid-template-columns: repeat(18, minmax(0, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(21, minmax(0, 1fr));
+    gap: 0.4rem;
+    /* Khoảng cách giữa các nút */
 }
 
-@media (max-width: 768px) {
+/* Responsive — màn hình vừa (tablet): thu về 14 cột (=> 42 câu = 3 dòng) */
+@media (max-width: 1024px) {
     .nav-grid {
-        grid-template-columns: repeat(9, minmax(0, 1fr));
+        grid-template-columns: repeat(14, minmax(0, 1fr));
     }
 }
 
+/* Responsive — màn hình nhỏ (điện thoại): thu về 7 cột (=> 42 câu = 6 dòng) */
+@media (max-width: 768px) {
+    .nav-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+}
+
+/* ===== KHUNG CHỨA BẢNG CÂU HỎI =====
+   ĐỂ THAY MÀU KHUNG: chỉnh --nav-box-bg và --nav-box-border trong :root bên trên */
 .nav-box {
     position: relative;
     z-index: 10;
-    border: 2px solid rgba(11, 61, 145, 0.08);
-    background: #87CEEB;
-    /* xanh da troi */
+    border: 2px solid var(--nav-box-border);
+    /* Viền xanh da trời */
+    background: var(--nav-box-bg);
+    /* Nền xanh da trời rất nhạt */
     border-radius: 12px;
     padding: 0.5rem;
-    color: var(--navy);
 }
 
+/* ===== NÚT CÂU HỎI — CƠ BẢN =====
+   Lớp nền dùng chung cho tất cả các trạng thái */
 .nav-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 2.25rem;
-    border-radius: 0.75rem;
-    background: transparent;
-    color: #000;
-    border: 1px solid rgba(11, 61, 145, 0.08);
-}
-
-/* nav button states inside navy box */
-.nav-btn-default {
-    background: transparent;
-    color: #000;
-    border-color: rgba(11, 61, 145, 0.06);
-}
-
-.nav-btn-answered {
-    background: rgba(11, 61, 145, 0.06);
-    color: #000;
-    border-color: rgba(11, 61, 145, 0.08);
-}
-
-.nav-btn-active {
-    background: rgba(11, 61, 145, 0.12);
-    color: #000;
-    border-color: rgba(11, 61, 145, 0.14);
-    font-weight: 700;
-}
-
-/* Box surrounding the question grid */
-.nav-btn {
+    height: 2rem;
+    /* Chiều cao nút — có thể tăng lên 2.25rem nếu muốn to hơn */
+    border-radius: 0.5rem;
+    font-size: 0.7rem;
+    /* Cỡ chữ số bên trong nút */
     position: relative;
     z-index: 20;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    border: 1px solid var(--nav-btn-default-border);
 }
 
+/* ===== TRẠNG THÁI 1: CÂU HỎI CHƯA TRẢ LỜI (MẶC ĐỊNH) =====
+   ĐỂ THAY MÀU: chỉnh --nav-btn-default-* trong :root */
+.nav-btn-default {
+    background: var(--nav-btn-default-bg);
+    color: var(--nav-btn-default-color);
+    border-color: var(--nav-btn-default-border);
+}
+
+/* ===== TRẠNG THÁI 2: CÂU HỎI ĐÃ TRẢ LỜI =====
+   ĐỂ THAY MÀU: chỉnh --nav-btn-answered-* trong :root */
+.nav-btn-answered {
+    background: var(--nav-btn-answered-bg);
+    color: var(--nav-btn-answered-color);
+    border-color: var(--nav-btn-answered-border);
+    font-weight: 600;
+}
+
+/* ===== TRẠNG THÁI 3: CÂU HỎI ĐANG CHỌN (NỔI BẬT NHẤT) =====
+   ĐỂ THAY MÀU: chỉnh --nav-btn-active-* trong :root */
+.nav-btn-active {
+    background: var(--nav-btn-active-bg);
+    color: var(--nav-btn-active-color);
+    border-color: var(--nav-btn-active-border);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    /* Đổ bóng xanh nhẹ */
+}
+
+/* Responsive — thu nhỏ padding khung trên điện thoại */
 @media (max-width: 768px) {
     .nav-box {
-        padding: 0.4rem;
+        padding: 0.35rem;
+    }
+
+    .nav-btn {
+        height: 1.75rem;
+        font-size: 0.65rem;
     }
 }
 
-/* Scrollbar */
+/* ----- THANH CUỘN TÙY CHỈNH ----- */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -139,24 +217,28 @@ body {
 
 ::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
+    /* Màu nền thanh cuộn */
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
+    /* Màu tay cầm thanh cuộn */
     border-radius: 10px;
 }
 
-/* Auth Tab Styling */
+/* ----- TAB ĐĂNG NHẬP / ĐĂNG KÝ ----- */
 .auth-tab {
     position: relative;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
+/* Màu tab đang được chọn */
 .auth-tab.active {
-    color: #6BA4CC;
+    color: var(--brand-blue);
 }
 
+/* Gạch chân dưới tab đang chọn */
 .auth-tab.active::after {
     content: '';
     position: absolute;
@@ -164,11 +246,56 @@ body {
     left: 0;
     width: 100%;
     height: 2px;
-    background: #6BA4CC;
+    background: var(--brand-blue);
     border-radius: 2px;
 }
 
-/* Charts */
+/* ----- Ô INPUT MẬT KHẨU CÓ NÚT HIỂN THỊ ----- */
+/* Khung bọc ô input + nút con mắt */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+/* Ô input mật khẩu bên trong khung bọc */
+.password-wrapper input {
+    width: 100%;
+    padding-right: 3rem;
+    /* Dành chỗ cho nút con mắt bên phải */
+}
+
+/* Nút con mắt hiển thị/ẩn mật khẩu */
+.password-toggle-btn {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: #94a3b8;
+    /* Màu icon mặc định — xám */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+    border-radius: 4px;
+}
+
+/* Hover: icon chuyển sang màu xanh thương hiệu */
+.password-toggle-btn:hover {
+    color: var(--brand-blue);
+}
+
+/* Focus visible cho accessibility */
+.password-toggle-btn:focus-visible {
+    outline: 2px solid var(--brand-blue);
+    outline-offset: 2px;
+}
+
+/* ----- BIỂU ĐỒ (CHARTS) ----- */
 .chart-wrap {
     position: relative;
     width: 100%;
@@ -185,6 +312,7 @@ body {
     height: 100%;
 }
 
+/* Giá trị % hiển thị ở tâm biểu đồ donut */
 .donut-center {
     position: absolute;
     top: 50%;
@@ -204,7 +332,7 @@ body {
     transform: translateY(-15px);
 }
 
-/* Layout overrides */
+/* ----- LAYOUT TRANG ----- */
 .result-page {
     display: flex;
     align-items: center;
@@ -218,7 +346,12 @@ body {
     background: linear-gradient(180deg, #F4F9F9 0%, #FFFFFF 100%);
 }
 
-/* Disable shake/vibrate animations and unintended transforms */
+/* ============================================================
+   VÔ HIỆU HÓA TOÀN BỘ HIỆU ỨNG RUNG / GIẬT MÀN HÌNH
+   Xóa block này nếu muốn bật lại animation trong tương lai
+   ============================================================ */
+
+/* Tắt các class rung/lắc cụ thể */
 .shake,
 .rung,
 .vibrate,
@@ -231,16 +364,64 @@ body {
     transform: none !important;
 }
 
-/* Disable any tailwind animate-* classes that might cause movement */
+/* Tắt các class animate-* của Tailwind */
 .animate-fade-in,
-.animate-slide-up,
-.animate-* {
+.animate-slide-up {
     animation: none !important;
 }
 
-/* Fallback: prevent any keyframe-based shaking */
-* {
+/* Tắt animation trên mọi phần tử TRỪ canvas (canvas cần cho Chart.js render biểu đồ) */
+/* — block này được ghi đè bởi *:not(canvas) bên dưới — */
+
+/* ============================================================
+   VÔ HIỆU HÓA HIỆU ỨNG RUNG / GIẬT MÀN HÌNH — PHIÊN BẢN SỬA
+   Lưu ý: KHÔNG áp dụng cho <canvas> để Chart.js hoạt động bình thường
+   ============================================================ */
+
+/* Ghi đè lại block cũ: tắt animation TRỪ canvas */
+*:not(canvas):not(canvas *) {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
     transition-duration: 0s !important;
+}
+
+/* ============================================================
+   FIX LAYOUT TRANG KẾT QUẢ — hiển thị 1 cột dọc, cuộn mượt
+   ============================================================ */
+
+/* Chart.js canvas: đặt chiều cao cố định để không bị thu nhỏ về 0 */
+#dassBarChart {
+    min-height: 220px !important;
+    height: 220px !important;
+}
+
+#donutChart {
+    min-height: 160px !important;
+    height: 160px !important;
+}
+
+#communityMbiChart,
+#communityDassChart {
+    min-height: 180px !important;
+    height: 180px !important;
+}
+
+/* Wrapper chart: đảm bảo có chiều cao thực, không bị collapse */
+.chart-wrap {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    overflow: visible !important;
+}
+
+.chart-wrap canvas {
+    display: block !important;
+    max-width: 100% !important;
+}
+
+/* Đảm bảo các card kết quả không bị tràn ngang */
+main section>div {
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
