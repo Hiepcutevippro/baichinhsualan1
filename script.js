@@ -79,7 +79,7 @@ const MBI_QUESTIONS = [
 const DASS_NOISE_QUESTIONS = [
     { id: 'dass-noise-1', text: 'Bạn chưa bao giờ để những thất bại hay rắc rối cá nhân làm ảnh hưởng đến tinh thần hoặc giấc ngủ của mình quá một ngày', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
     { id: 'dass-noise-2', text: 'Bạn vẫn tìm thấy những nguồn năng lượng tích cực và sự bình yên trong các hoạt động hằng ngày', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
-    { id: 'dass-noise-3', text: 'Đôi khi bạn cảm thấy bực mình hoặc khó chịu vì những chuyện nhỏ nhặt.', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
+    // Câu 'dass-noise-3' đã bị loại bỏ theo yêu cầu (câu về bực mình chuyện nhỏ nhặt)
     { id: 'dass-noise-4', text: 'Đôi khi bạn cảm thấy hụt hẫng hoặc có chút thất vọng khi những nỗ lực của bản thân không đem lại kết quả như kỳ vọng', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true }
 ];
 const MBI_NOISE_QUESTIONS = [
@@ -90,7 +90,9 @@ const MBI_NOISE_QUESTIONS = [
 
 // Thứ tự hiển thị cuối cùng: DASS-21 gốc + 4 câu nhiễu xen vào đúng vị trí 5, 11, 16, 22 (=> 25 câu)
 // và MBI-SS gốc + 3 câu nhiễu xen vào đúng vị trí 4, 9, 15 (=> 18 câu).
-const DASS_ORDER_IDS = ['dass-1', 'dass-2', 'dass-3', 'dass-4', 'dass-noise-1', 'dass-5', 'dass-6', 'dass-7', 'dass-8', 'dass-9', 'dass-noise-2', 'dass-10', 'dass-11', 'dass-12', 'dass-13', 'dass-noise-3', 'dass-14', 'dass-15', 'dass-16', 'dass-17', 'dass-18', 'dass-noise-4', 'dass-19', 'dass-20', 'dass-21'];
+// Thứ tự DASS: 21 câu gốc + 3 câu nhiễu (đã bỏ dass-noise-3 "bực mình nhỏ nhặt") = 24 câu
+// Kết hợp MBI_ORDER_IDS (18 câu) => Tổng 42 câu
+const DASS_ORDER_IDS = ['dass-1', 'dass-2', 'dass-3', 'dass-4', 'dass-noise-1', 'dass-5', 'dass-6', 'dass-7', 'dass-8', 'dass-9', 'dass-noise-2', 'dass-10', 'dass-11', 'dass-12', 'dass-13', 'dass-14', 'dass-15', 'dass-16', 'dass-17', 'dass-18', 'dass-noise-4', 'dass-19', 'dass-20', 'dass-21'];
 const MBI_ORDER_IDS = ['mbi-1', 'mbi-2', 'mbi-3', 'mbi-noise-1', 'mbi-4', 'mbi-5', 'mbi-6', 'mbi-7', 'mbi-noise-2', 'mbi-8', 'mbi-9', 'mbi-10', 'mbi-11', 'mbi-12', 'mbi-noise-3', 'mbi-13', 'mbi-14', 'mbi-15'];
 const ALL_QUESTIONS_BY_ID = {};
 [...DASS_QUESTIONS, ...DASS_NOISE_QUESTIONS, ...MBI_QUESTIONS, ...MBI_NOISE_QUESTIONS].forEach(q => { ALL_QUESTIONS_BY_ID[q.id] = q; });
@@ -313,7 +315,7 @@ async function loadCommunityStats() {
 const getSum = (ansObj, ids) => ids.reduce((total, id) => total + (ansObj[id] || 0), 0);
 function getLevelConfig(scale, rawScore) {
     const score = rawScore * 2;
-    let label = 'Bình thường';
+    let label = 'Tốt';
     if (scale === 'stress') {
         if (score >= 34) label = 'Rất nặng'; else if (score >= 26) label = 'Nặng';
         else if (score >= 20) label = 'Vừa'; else if (score >= 16) label = 'Nhẹ';
@@ -324,15 +326,15 @@ function getLevelConfig(scale, rawScore) {
         if (score >= 20) label = 'Rất nặng'; else if (score >= 16) label = 'Nặng';
         else if (score >= 12) label = 'Vừa'; else if (score >= 8) label = 'Nhẹ';
     }
-    if (label === 'Bình thường') return { label, className: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500', hex: '#10B981', icon: 'smile' };
+    if (label === 'Tốt') return { label, className: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500', hex: '#10B981', icon: 'smile' };
     if (label === 'Nhẹ') return { label, className: 'border-sky-200 bg-sky-50 text-sky-800', dot: 'bg-sky-500', hex: '#0ea8f0', icon: 'meh' };
-    if (label === 'Vừa') return { label, className: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500', hex: '#F59E0B', icon: 'frown' };
+    if (label === 'Vừa') return { label, className: 'border-amber-200 bg-amber-50 text-amber-900', dot: 'bg-amber-500', hex: '#F59E0B', icon: 'meh' };
     return { label, className: 'border-rose-200 bg-rose-50 text-rose-900', dot: 'bg-rose-500', hex: '#F43F5E', icon: 'alert-triangle' };
 }
 
 function getAdvice(label) {
     switch (label) {
-        case 'Bình thường': return 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.';
+        case 'Tốt': return 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.';
         case 'Nhẹ': return 'Có vài dấu hiệu căng thẳng nhẹ. Thử dành 10-15 phút mỗi ngày để nghỉ ngơi, hít thở sâu hoặc đi dạo.';
         case 'Vừa': return 'Mức độ đang ở ngưỡng vừa. Bạn nên sắp xếp lại lịch học hợp lý hơn, thử các kỹ thuật thư giãn và chia sẻ cảm xúc.';
         case 'Nặng': return 'Chỉ số đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc chuyên gia để được hỗ trợ sớm.';
@@ -341,7 +343,7 @@ function getAdvice(label) {
 }
 
 // ===== BỔ SUNG: Trạng thái tinh thần tổng quát + thước đo ngang (không thay đổi logic tính điểm gốc) =====
-const SEVERITY_LEVELS = ['Bình thường', 'Nhẹ', 'Vừa', 'Nặng', 'Rất nặng'];
+const SEVERITY_LEVELS = ['Tốt', 'Nhẹ', 'Vừa', 'Nặng', 'Rất nặng'];
 const severityRank = (label) => SEVERITY_LEVELS.indexOf(label);
 
 // Lấy mức độ nặng nhất trong 3 chỉ số Stress/Lo âu/Trầm cảm => đại diện cho "Trạng thái tinh thần tổng quát"
@@ -361,10 +363,10 @@ function getMbiRiskPct(scores) {
 }
 
 function getMbiLevelConfig(riskPct) {
-    let label = 'Bình thường';
+    let label = 'Tốt';
     if (riskPct >= 85) label = 'Rất nặng'; else if (riskPct >= 65) label = 'Nặng';
     else if (riskPct >= 45) label = 'Vừa'; else if (riskPct >= 25) label = 'Nhẹ';
-    if (label === 'Bình thường') return { label, hex: '#10B981' };
+    if (label === 'Tốt') return { label, hex: '#10B981' };
     if (label === 'Nhẹ') return { label, hex: THEME.primary };
     if (label === 'Vừa') return { label, hex: '#F59E0B' };
     return { label, hex: '#F43F5E' };
@@ -372,17 +374,17 @@ function getMbiLevelConfig(riskPct) {
 
 // Gộp 5 mức thành đúng 3 dải màu trực quan theo yêu cầu: Xanh lá / Vàng / Đỏ
 function getGaugeBandColor(label) {
-    if (label === 'Bình thường') return '#10B981';
+    if (label === 'Tốt') return '#10B981';
     if (label === 'Nặng' || label === 'Rất nặng') return '#F43F5E';
     return '#F59E0B'; // Nhẹ, Vừa
 }
 
 // Vị trí con trỏ trên thước đo (đảm bảo luôn rơi đúng vào dải màu tương ứng với nhãn)
-const GAUGE_MARKER_POSITION = { 'Bình thường': 16, 'Nhẹ': 41, 'Vừa': 58, 'Nặng': 75, 'Rất nặng': 92 };
+const GAUGE_MARKER_POSITION = { 'Tốt': 16, 'Nhẹ': 41, 'Vừa': 58, 'Nặng': 75, 'Rất nặng': 92 };
 
 function getClosingLine(label) {
     switch (label) {
-        case 'Bình thường': return 'Hãy tiếp tục duy trì nhé!';
+        case 'Tốt': return 'Hãy tiếp tục duy trì nhé!';
         case 'Nhẹ': return 'Đừng quên dành thời gian nghỉ ngơi cho bản thân nhé!';
         case 'Vừa': return 'Hãy quan tâm đến bản thân nhiều hơn trong thời gian tới nhé!';
         default: return 'Đừng ngần ngại tìm kiếm sự hỗ trợ nhé, bạn không đơn độc đâu!';
@@ -401,7 +403,7 @@ function renderGaugeBar(title, label) {
             <div class="absolute top-1/2 h-5 w-5 rounded-full bg-white shadow-md border-[3px]" style="left: ${pos}%; top: 50%; transform: translate(-50%, -50%); border-color: ${bandColor};"></div>
         </div>
         <div class="flex justify-between mt-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
-            <span>Bình thường</span><span>Nhẹ · Vừa</span><span>Nặng · Rất nặng</span>
+            <span>Tốt</span><span>Nhẹ · Vừa</span><span>Nặng · Rất nặng</span>
         </div>
     </div>`;
 }
@@ -444,7 +446,12 @@ function renderAuth() {
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">Mật khẩu</label>
-                            <input type="password" name="password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition">
+                            <div class="password-wrapper">
+                                <input type="password" id="passwordInput" name="password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" id="pwToggleBtn" aria-label="Hiển thị hoặc ẩn mật khẩu" title="Hiển thị / Ẩn mật khẩu">
+                                    <i data-lucide="eye-off" class="w-5 h-5" id="pwToggleIcon"></i>
+                                </button>
+                            </div>
                         </div>
                         <button type="submit" ${authLoading ? 'disabled' : ''} class="w-full bg-gradient-to-r from-brand-blue to-brand-mint text-white font-black rounded-xl px-4 py-3.5 mt-2 shadow-lg disabled:opacity-60">
                             ${authLoading ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
@@ -532,8 +539,8 @@ function renderStart() {
                     <div class="mt-6 grid gap-4 sm:grid-cols-2 w-full max-w-2xl">
                         <div class="rounded-3xl border border-brand-blue/20 bg-brand-blue/10 p-5 text-center shadow-sm">
                             <p class="text-sm font-semibold uppercase tracking-[0.22em] text-brand-dark">DASS-21</p>
-                            <p class="mt-3 text-3xl font-black text-brand-blue">25 câu</p>
-                            <p class="mt-1 text-[11px] font-semibold text-brand-dark/60">Đã gồm 4 câu kiểm định nhất quán</p>
+                            <p class="mt-3 text-3xl font-black text-brand-blue">24 câu</p>
+                            <p class="mt-1 text-[11px] font-semibold text-brand-dark/60">Đã gồm 3 câu kiểm định nhất quán</p>
                         </div>
                         <div class="rounded-3xl border border-brand-mint/20 bg-brand-mint/10 p-5 text-center shadow-sm">
                             <p class="text-sm font-semibold uppercase tracking-[0.22em] text-brand-dark">MBI-SS</p>
@@ -794,6 +801,41 @@ function initCommunityCharts() {
         data: { labels: ['Stress', 'Lo âu', 'Trầm cảm'], datasets: [{ data: [(communityStats.stress / div).toFixed(1), (communityStats.anxiety / div).toFixed(1), (communityStats.depression / div).toFixed(1)], backgroundColor: ['#F43F5E', '#8B5CF6', THEME.primary], borderRadius: 6, barThickness: 24 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 42, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
     });
+}
+
+// ===== HIỂN THỊ / ẨN MẬT KHẨU =====
+// Quy tắc icon — thể hiện TRẠNG THÁI HIỆN TẠI:
+//   🔒 Mật khẩu đang ẨN  (type="password") => icon MẮT ĐÓNG (eye-off)
+//   👁 Mật khẩu đang HIỆN (type="text")     => icon MẮT MỞ  (eye)
+function togglePasswordVisibility() {
+    const input = document.getElementById('passwordInput');
+    const icon = document.getElementById('pwToggleIcon');
+    const btn = document.getElementById('pwToggleBtn');
+    if (!input) return;
+
+    const isHidden = input.type === 'password'; // true = đang ẩn mật khẩu
+
+    // Chuyển đổi kiểu input: password <=> text
+    input.type = isHidden ? 'text' : 'password';
+
+    // Sau khi toggle — cập nhật icon theo trạng thái MỚI:
+    //   isHidden=true  => vừa chuyển sang HIỆN mk => icon MẮT MỞ   (eye)
+    //   isHidden=false => vừa chuyển sang ẨN mk   => icon MẮT ĐÓNG (eye-off)
+    if (icon) {
+        icon.setAttribute('data-lucide', isHidden ? 'eye' : 'eye-off');
+        lucide.createIcons(); // Vẽ lại icon Lucide sau khi đổi data-lucide
+    }
+
+    // Cập nhật aria-label cho trợ năng (accessibility)
+    if (btn) {
+        btn.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu');
+        btn.setAttribute('title', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu');
+    }
+
+    // Giữ con trỏ ở cuối ô input sau khi toggle (giống hành vi Google / Facebook)
+    const len = input.value.length;
+    input.setSelectionRange(len, len);
+    input.focus();
 }
 
 renderApp();
