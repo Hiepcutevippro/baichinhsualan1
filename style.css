@@ -18,14 +18,14 @@
     --brand-mint: #85D3C1;
 
     /* Màu xanh đen đậm — dùng cho tiêu đề, text nổi bật */
-    --brand-dark: #000000;
+    --brand-dark: #0000002e;
 
     /* Màu nền tổng thể của toàn bộ trang */
-    --brand-surface: #F4F9F9;
+    --brand-surface: #ffffff;
 
     /* ===== MÀU BẢNG CÂU HỎI (NAVIGATION GRID) ===== */
     /* Màu nền khung chứa các nút câu hỏi — xanh da trời nhạt */
-    --nav-box-bg: #DBEAFE;
+    --nav-box-bg: #80d8d8;
 
     /* Màu viền của khung chứa — xanh da trời vừa */
     --nav-box-border: #93C5FD;
@@ -40,7 +40,7 @@
     --nav-btn-default-border: #BFDBFE;
 
     /* Màu nút ĐÃ TRẢ LỜI — nền xanh da trời vừa */
-    --nav-btn-answered-bg: #BFDBFE;
+    --nav-btn-answered-bg: #cfddee;
 
     /* Màu chữ số nút ĐÃ TRẢ LỜI */
     --nav-btn-answered-color: #ff0000;
@@ -312,25 +312,9 @@ body {
     height: 100%;
 }
 
-/* Giá trị % hiển thị ở tâm biểu đồ donut */
-.donut-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -73%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    text-align: center;
-    z-index: 1;
-}
+/* Wrapper biểu đồ donut — dùng position:relative để overlay số ở giữa bằng inline style */
+/* Các style .donut-center và #donutCenterValue đã chuyển sang inline style trong HTML */
 
-#donutCenterValue {
-    line-height: 1;
-    display: inline-block;
-    transform: translateY(-15px);
-}
 
 /* ----- LAYOUT TRANG ----- */
 .result-page {
@@ -398,6 +382,7 @@ body {
 #donutChart {
     min-height: 160px !important;
     height: 160px !important;
+    width: 160px !important;
 }
 
 #communityMbiChart,
