@@ -264,15 +264,17 @@ async function handleLogout() {
 }
 
 async function saveResult(scores) {
+    // LƯU Ý: DASS lưu điểm THÔ (chưa ×2) để tránh nhân đôi.
+    // Khi hiển thị, nhân ×2 tại chỗ (renderResult đã làm đúng: rawVal * 2).
     const record = {
         user_name: currentUser?.isIncognito ? currentUser.name : (currentUser?.name || 'Ẩn danh'),
         is_incognito: currentUser?.isIncognito || false,
-        stress: scores.stress * 2,
-        anxiety: scores.anxiety * 2,
-        depression: scores.depression * 2,
-        emotional_exhaustion: scores.emotionalExhaustion,
-        cynicism: scores.cynicism,
-        academic_efficacy: scores.academicEfficacy
+        stress: scores.stress,           // điểm thô 0–21
+        anxiety: scores.anxiety,         // điểm thô 0–21
+        depression: scores.depression,   // điểm thô 0–21
+        emotional_exhaustion: scores.emotionalExhaustion, // 0–30
+        cynicism: scores.cynicism,                        // 0–24
+        academic_efficacy: scores.academicEfficacy        // 0–36
     };
     if (supabaseReady) {
         if (currentUser?.id) record.user_id = currentUser.id;
@@ -281,13 +283,14 @@ async function saveResult(scores) {
         else console.log('✅ Đã lưu kết quả lên máy chủ!');
     }
     // Luôn lưu localStorage để có fallback
+    // Cộng dồn điểm thô (không nhân ×2 ở đây — sẽ nhân khi hiển thị)
     communityStats.count += 1;
     communityStats.emotionalExhaustion += scores.emotionalExhaustion;
     communityStats.cynicism += scores.cynicism;
     communityStats.academicEfficacy += scores.academicEfficacy;
-    communityStats.stress += (scores.stress * 2);
-    communityStats.anxiety += (scores.anxiety * 2);
-    communityStats.depression += (scores.depression * 2);
+    communityStats.stress += scores.stress;
+    communityStats.anxiety += scores.anxiety;
+    communityStats.depression += scores.depression;
     localStorage.setItem('mental_health_survey_v2', JSON.stringify(communityStats));
 }
 
@@ -669,9 +672,16 @@ function renderResult() {
                             <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600"><i data-lucide="battery-warning" class="h-6 w-6"></i></div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6">
-                            <div class="rounded-3xl border border-slate-100 bg-slate-50 p-4 flex flex-col items-center justify-center">
-                                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500 mb-2">Mức độ nguy cơ</p>
-                                <div class="chart-wrap h-40 w-40"><canvas id="donutChart"></canvas><div class="donut-center"><strong id="donutCenterValue" class="font-mono text-3xl font-black text-brand-dark">0%</strong></div></div>
+                            <div class="rounded-3xl border border-slate-100 bg-slate-50 p-4 flex flex-col items-center justify-center gap-3">
+                                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Mức độ nguy cơ kiệt sức</p>
+                                <div class="relative" style="width:160px;height:160px;">
+                                    <canvas id="donutChart" width="160" height="160" style="position:absolute;top:0;left:0;"></canvas>
+                                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+                                        <strong id="donutCenterValue" class="font-mono text-3xl font-black text-brand-dark" style="display:block;line-height:1;">0%</strong>
+                                        <span id="donutCenterLabel" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" style="display:block;margin-top:2px;">Nguy cơ</span>
+                                    </div>
+                                </div>
+                                <div id="donutLegend" class="flex flex-col gap-1 w-full text-xs font-semibold text-slate-600"></div>
                             </div>
                             <div class="space-y-3 flex flex-col justify-center">${mbiHTML}</div>
                         </div>
@@ -754,19 +764,82 @@ function handleReset() {
 function initDonutChart() {
     const canvas = document.getElementById('donutChart');
     if (!canvas) return;
-    const exhaustion = currentScores.emotionalExhaustion;
-    const cynicism = currentScores.cynicism;
-    const lowEfficacy = 36 - currentScores.academicEfficacy;
-    const total = exhaustion + cynicism + lowEfficacy;
-    const maxTotal = 30 + 24 + 36;
-    const riskPct = Math.round((total / maxTotal) * 100);
+
+    // --- Tính điểm từng thành phần MBI ---
+    const exhaustion  = currentScores.emotionalExhaustion; // max 30, cao = xấu
+    const cynicism    = currentScores.cynicism;             // max 24, cao = xấu
+    // Mất hiệu quả học tập = max - điểm thực tế (vì efficacy cao = TỐT)
+    const lowEfficacy = 36 - currentScores.academicEfficacy; // max 36, kết quả cao = xấu
+
+    const maxTotal = 30 + 24 + 36; // = 90
+    const riskRaw  = exhaustion + cynicism + lowEfficacy;  // tổng "nguy cơ"
+    const safeRaw  = maxTotal - riskRaw;                   // phần "an toàn" còn lại
+    const riskPct  = Math.round((riskRaw / maxTotal) * 100);
+
+    // Cập nhật số ở giữa
     const el = document.getElementById('donutCenterValue');
     if (el) el.textContent = riskPct + '%';
+
+    // Màu cho trung tâm theo mức độ
+    const mbiLvl = getMbiLevelConfig(riskPct);
+    if (el) el.style.color = mbiLvl.hex;
+    const labelEl = document.getElementById('donutCenterLabel');
+    if (labelEl) { labelEl.textContent = mbiLvl.label; labelEl.style.color = mbiLvl.hex; }
+
+    // Tỷ lệ % từng thành phần trong phần nguy cơ (để label tooltip)
+    const exhPct  = Math.round((exhaustion  / maxTotal) * 100);
+    const cynPct  = Math.round((cynicism    / maxTotal) * 100);
+    const lowPct  = Math.round((lowEfficacy / maxTotal) * 100);
+    const safePct = 100 - exhPct - cynPct - lowPct;
+
+    // Cập nhật legend tự vẽ
+    const legendEl = document.getElementById('donutLegend');
+    if (legendEl) {
+        const items = [
+            { color: THEME.primary, label: 'Kiệt quệ cảm xúc', pct: exhPct },
+            { color: '#F59E0B',     label: 'Hoài nghi',          pct: cynPct },
+            { color: '#F43F5E',     label: 'Mất hiệu quả HT',    pct: lowPct },
+            { color: '#E2E8F0',     label: 'An toàn',             pct: safePct }
+        ];
+        legendEl.innerHTML = items.map(i =>
+            `<div style="display:flex;align-items:center;gap:6px;">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${i.color};flex-shrink:0;"></span>
+                <span style="flex:1;font-size:10px;">${i.label}</span>
+                <span style="font-size:10px;font-weight:800;color:#64748b;">${i.pct}%</span>
+            </div>`
+        ).join('');
+    }
+
     if (donutChartInstance) donutChartInstance.destroy();
     donutChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
-        data: { labels: ['Kiệt quệ', 'Hoài nghi', 'Ảnh hưởng'], datasets: [{ data: [exhaustion, cynicism, lowEfficacy], backgroundColor: [THEME.primary, '#F59E0B', '#F43F5E'], borderColor: '#fff', borderWidth: 3, cutout: '72%' }] },
-        options: { responsive: true, maintainAspectRatio: false, animation: { duration: 1200 }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10, family: 'Plus Jakarta Sans' }, boxWidth: 10 } } } }
+        data: {
+            labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Mất hiệu quả HT', 'An toàn'],
+            datasets: [{
+                data: [exhaustion, cynicism, lowEfficacy, safeRaw],
+                backgroundColor: [THEME.primary, '#F59E0B', '#F43F5E', '#E2E8F0'],
+                borderColor: '#fff',
+                borderWidth: 3,
+                cutout: '70%'
+            }]
+        },
+        options: {
+            responsive: false,
+            maintainAspectRatio: false,
+            animation: { duration: 1000 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const val = ctx.parsed;
+                            const pct = Math.round((val / maxTotal) * 100);
+                            return ` ${ctx.label}: ${pct}%`;
+                        }
+                    }
+                }
+            }
+        }
     });
 }
 
@@ -790,15 +863,18 @@ function initCommunityCharts() {
     if (!canvasMbi || !canvasDass) return;
     const div = communityStats.count > 0 ? communityStats.count : 1;
     if (communityMbiChartInstance) communityMbiChartInstance.destroy();
+    // MBI: Exhaustion max=30, Cynicism max=24, Efficacy max=36 → dùng max=36 cho trục Y
+    // Chú ý: Efficacy CAO = TỐT, nên thêm chú giải tránh nhầm
     communityMbiChartInstance = new Chart(canvasMbi.getContext('2d'), {
         type: 'bar',
-        data: { labels: ['Kiệt quệ', 'Hoài nghi', 'Ảnh hưởng HT'], datasets: [{ data: [(communityStats.emotionalExhaustion / div).toFixed(1), (communityStats.cynicism / div).toFixed(1), (communityStats.academicEfficacy / div).toFixed(1)], backgroundColor: [THEME.primary, '#F59E0B', '#10B981'], borderRadius: 6, barThickness: 24 }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 40, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
+        data: { labels: ['Kiệt quệ (↑xấu)', 'Hoài nghi (↑xấu)', 'Hiệu quả HT (↑tốt)'], datasets: [{ data: [(communityStats.emotionalExhaustion / div).toFixed(1), (communityStats.cynicism / div).toFixed(1), (communityStats.academicEfficacy / div).toFixed(1)], backgroundColor: [THEME.primary, '#F59E0B', '#10B981'], borderRadius: 6, barThickness: 24 }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 36, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
     });
     if (communityDassChartInstance) communityDassChartInstance.destroy();
+    // DASS: lưu điểm thô nên nhân ×2 khi hiển thị trung bình cộng đồng
     communityDassChartInstance = new Chart(canvasDass.getContext('2d'), {
         type: 'bar',
-        data: { labels: ['Stress', 'Lo âu', 'Trầm cảm'], datasets: [{ data: [(communityStats.stress / div).toFixed(1), (communityStats.anxiety / div).toFixed(1), (communityStats.depression / div).toFixed(1)], backgroundColor: ['#F43F5E', '#8B5CF6', THEME.primary], borderRadius: 6, barThickness: 24 }] },
+        data: { labels: ['Stress', 'Lo âu', 'Trầm cảm'], datasets: [{ data: [(communityStats.stress / div * 2).toFixed(1), (communityStats.anxiety / div * 2).toFixed(1), (communityStats.depression / div * 2).toFixed(1)], backgroundColor: ['#F43F5E', '#8B5CF6', THEME.primary], borderRadius: 6, barThickness: 24 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 42, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
     });
 }
