@@ -798,8 +798,8 @@ function initDonutChart() {
         const items = [
             { color: THEME.primary, label: 'Kiệt quệ cảm xúc', pct: exhPct },
             { color: '#F59E0B',     label: 'Hoài nghi',          pct: cynPct },
-            { color: '#F43F5E',     label: 'Mất hiệu quả HT',    pct: lowPct },
-            { color: '#E2E8F0',     label: 'An toàn',             pct: safePct }
+            { color: '#F43F5E',     label: 'Giảm hiệu quả học tập',    pct: lowPct },
+            { color: '#E2E8F0',     label: 'Tốt',             pct: safePct }
         ];
         legendEl.innerHTML = items.map(i =>
             `<div style="display:flex;align-items:center;gap:6px;">
@@ -814,7 +814,7 @@ function initDonutChart() {
     donutChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
         data: {
-            labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Mất hiệu quả HT', 'An toàn'],
+            labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Giảm hiệu quả học tập', 'Tốt'],
             datasets: [{
                 data: [exhaustion, cynicism, lowEfficacy, safeRaw],
                 backgroundColor: [THEME.primary, '#F59E0B', '#F43F5E', '#E2E8F0'],
