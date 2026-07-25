@@ -694,7 +694,7 @@ function renderStart() {
                 <h2 class="text-4xl md:text-5xl font-black leading-tight tracking-tight text-slate-800 mb-3">
                     Khảo Sát <span class="brand-gradient-text">Tâm Lý Học Đường</span>
                 </h2>
-                <p class="text-slate-500 font-medium max-w-lg text-base"> center
+                <p class="text-slate-500 font-medium max-w-lg text-base mx-auto text-justify">
                     Hệ thống đánh giá chuyên sâu giúp bạn hiểu rõ mức độ Căng thẳng, Lo âu, Trầm cảm và Kiệt quệ. Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng nền tảng thang đo chuẩn hoá quốc tế DASS-21 và MBI-SS, kết hợp cùng các chỉ số kiểm định dữ liệu độc lập để đảm bảo tính khách quan.
                 </p>
             
