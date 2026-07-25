@@ -1,26 +1,20 @@
+// ============================================================
+//  script.js — THPT Gia Lộc — Khảo Sát Tâm Lý
+//  PHIÊN BẢN MỚI: Lịch sử, Lưu mật khẩu, Thẻ rút gọn, UI mới
+// ============================================================
+
 const SUPABASE_URL = 'https://iwncqexhxnflcmrovfga.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_vdDbdvfTImKTM_WHhM8POw_-WrvjCZj';
-let db = null; // Supabase client
+let db = null;
 let supabaseReady = false;
 try {
     if (window.supabase && window.supabase.createClient) {
         db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         supabaseReady = true;
-        console.log('✅ Supabase đã kết nối thành công!');
-    } else {
-        console.warn('⚠️ Supabase SDK chưa load. Dùng chế độ offline (localStorage).');
     }
-} catch (err) {
-    console.error('❌ Lỗi khởi tạo Supabase:', err.message);
-    console.warn('⚠️ Chuyển sang chế độ offline (localStorage).');
-}
+} catch (err) { console.warn('Supabase:', err.message); }
 
-// Theme constants (shifted greener)
-const THEME = {
-    primary: '#2FBF9A',
-    accent: '#7EE3C6',
-    dark: '#0F4D40'
-};
+const THEME = { primary: '#4F8EC9', mint: '#42C8A8', dark: '#0D3348' };
 
 const MBI_SCALE = [
     { value: 0, label: 'Không bao giờ' }, { value: 1, label: 'Vài lần/năm' },
@@ -73,13 +67,9 @@ const MBI_QUESTIONS = [
     { id: 'mbi-15', text: 'Bạn tin rằng mình đóng góp một cách hiệu quả vào các lớp học mà mình tham gia.', scale: MBI_SCALE, sectionTitle: 'Phần 2 — MBI-SS', section: 'MBI-SS' }
 ];
 
-// Câu hỏi nhiễu (kiểm định nhất quán câu trả lời) - CHỈ dùng để đối chiếu độ tin cậy,
-// KHÔNG được cộng vào bất kỳ nhóm điểm nào bên dưới (DASS_STRESS/ANXIETY/DEPRESSION, MBI_...).
-// Nhờ vậy hàm getSum() tự động bỏ qua các câu này khi tính điểm.
 const DASS_NOISE_QUESTIONS = [
     { id: 'dass-noise-1', text: 'Bạn chưa bao giờ để những thất bại hay rắc rối cá nhân làm ảnh hưởng đến tinh thần hoặc giấc ngủ của mình quá một ngày', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
     { id: 'dass-noise-2', text: 'Bạn vẫn tìm thấy những nguồn năng lượng tích cực và sự bình yên trong các hoạt động hằng ngày', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true },
-    // Câu 'dass-noise-3' đã bị loại bỏ theo yêu cầu (câu về bực mình chuyện nhỏ nhặt)
     { id: 'dass-noise-4', text: 'Đôi khi bạn cảm thấy hụt hẫng hoặc có chút thất vọng khi những nỗ lực của bản thân không đem lại kết quả như kỳ vọng', scale: DASS_SCALE, sectionTitle: 'Phần 1 — DASS-21', section: 'DASS-21', isNoise: true }
 ];
 const MBI_NOISE_QUESTIONS = [
@@ -88,18 +78,13 @@ const MBI_NOISE_QUESTIONS = [
     { id: 'mbi-noise-3', text: 'Chỉ cần một khoảng nghỉ ngắn giữa giờ cũng đủ để bạn lấy lại tinh thần thoải mái cho các tiết học tiếp theo.', scale: MBI_SCALE, sectionTitle: 'Phần 2 — MBI-SS', section: 'MBI-SS', isNoise: true }
 ];
 
-// Thứ tự hiển thị cuối cùng: DASS-21 gốc + 4 câu nhiễu xen vào đúng vị trí 5, 11, 16, 22 (=> 25 câu)
-// và MBI-SS gốc + 3 câu nhiễu xen vào đúng vị trí 4, 9, 15 (=> 18 câu).
-// Thứ tự DASS: 21 câu gốc + 3 câu nhiễu (đã bỏ dass-noise-3 "bực mình nhỏ nhặt") = 24 câu
-// Kết hợp MBI_ORDER_IDS (18 câu) => Tổng 42 câu
 const DASS_ORDER_IDS = ['dass-1', 'dass-2', 'dass-3', 'dass-4', 'dass-noise-1', 'dass-5', 'dass-6', 'dass-7', 'dass-8', 'dass-9', 'dass-noise-2', 'dass-10', 'dass-11', 'dass-12', 'dass-13', 'dass-14', 'dass-15', 'dass-16', 'dass-17', 'dass-18', 'dass-noise-4', 'dass-19', 'dass-20', 'dass-21'];
 const MBI_ORDER_IDS = ['mbi-1', 'mbi-2', 'mbi-3', 'mbi-noise-1', 'mbi-4', 'mbi-5', 'mbi-6', 'mbi-7', 'mbi-noise-2', 'mbi-8', 'mbi-9', 'mbi-10', 'mbi-11', 'mbi-12', 'mbi-noise-3', 'mbi-13', 'mbi-14', 'mbi-15'];
+
 const ALL_QUESTIONS_BY_ID = {};
 [...DASS_QUESTIONS, ...DASS_NOISE_QUESTIONS, ...MBI_QUESTIONS, ...MBI_NOISE_QUESTIONS].forEach(q => { ALL_QUESTIONS_BY_ID[q.id] = q; });
-
 let QUESTIONS = [...DASS_ORDER_IDS, ...MBI_ORDER_IDS].map((id, idx) => ({ ...ALL_QUESTIONS_BY_ID[id], order: idx + 1 }));
 
-// Logic nhóm điểm
 const DASS_STRESS = ['dass-1', 'dass-6', 'dass-8', 'dass-11', 'dass-12', 'dass-14', 'dass-18'];
 const DASS_ANXIETY = ['dass-2', 'dass-4', 'dass-7', 'dass-9', 'dass-15', 'dass-19', 'dass-20'];
 const DASS_DEPRESSION = ['dass-3', 'dass-5', 'dass-10', 'dass-13', 'dass-16', 'dass-17', 'dass-21'];
@@ -107,6 +92,7 @@ const MBI_EMOTIONAL_EXHAUSTION = ['mbi-1', 'mbi-4', 'mbi-6', 'mbi-8', 'mbi-13'];
 const MBI_CYNICISM = ['mbi-2', 'mbi-9', 'mbi-10', 'mbi-12'];
 const MBI_ACADEMIC_EFFICACY = ['mbi-3', 'mbi-5', 'mbi-7', 'mbi-11', 'mbi-14', 'mbi-15'];
 
+// ===== STATE =====
 let step = 'auth';
 let authMode = 'login';
 let currentIndex = 0;
@@ -121,14 +107,49 @@ let currentUser = null;
 let authLoading = false;
 let authError = '';
 let authSuccess = '';
+let collapseState = { mbi: false, dass: false, community: false, history: true };
 
-// Load stats cũ từ localStorage (fallback)
+// ===== SAVED CREDENTIALS (Remember Me) =====
+function getSavedCredentials() {
+    try { return JSON.parse(localStorage.getItem('mh_saved_creds') || 'null'); } catch { return null; }
+}
+function saveCredentials(email, password) {
+    localStorage.setItem('mh_saved_creds', JSON.stringify({ email, password }));
+}
+function clearSavedCredentials() {
+    localStorage.removeItem('mh_saved_creds');
+}
+
+// ===== SURVEY HISTORY (per user) =====
+function getHistoryKey(email) { return 'mh_history_' + btoa(email || 'incognito'); }
+
+function getUserHistory(email) {
+    try { return JSON.parse(localStorage.getItem(getHistoryKey(email)) || '[]'); } catch { return []; }
+}
+
+function saveToHistory(email, scores) {
+    if (!email) return;
+    const key = getHistoryKey(email);
+    const history = getUserHistory(email);
+    history.unshift({
+        date: new Date().toISOString(),
+        scores: { ...scores }
+    });
+    // Keep last 20 records
+    const trimmed = history.slice(0, 20);
+    localStorage.setItem(key, JSON.stringify(trimmed));
+}
+
+// ===== LOCAL USERS DB =====
+let localUsersDb = JSON.parse(localStorage.getItem('mental_health_users') || '[]');
+
+// ===== COMMUNITY STATS =====
 try {
     const saved = localStorage.getItem('mental_health_survey_v2');
     if (saved) communityStats = JSON.parse(saved);
 } catch (e) { }
 
-let localUsersDb = JSON.parse(localStorage.getItem('mental_health_users') || '[]');
+// ===== AUTH UTILS =====
 async function hashPassword(password) {
     const data = new TextEncoder().encode(password);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -143,47 +164,32 @@ async function setLocalPassword(user, password) {
     delete user.password;
 }
 
+// ===== AUTH =====
 async function handleAuthSubmit(e) {
     e.preventDefault();
-    authLoading = true;
-    authError = '';
-    authSuccess = '';
+    authLoading = true; authError = ''; authSuccess = '';
     renderApp();
     const fd = new FormData(e.target);
     const email = fd.get('email').trim();
     const password = fd.get('password');
     const displayName = fd.get('name') ? fd.get('name').trim() : '';
+    const rememberMe = fd.get('rememberMe') === 'on';
+
     try {
         if (supabaseReady) {
-            // ===== SUPABASE AUTH =====
             if (authMode === 'register') {
                 const { data, error } = await db.auth.signUp({
-                    email: email,
-                    password: password,
+                    email, password,
                     options: { data: { display_name: displayName || email.split('@')[0] } }
                 });
                 if (error) throw error;
-                currentUser = {
-                    id: data.user.id,
-                    name: displayName || email.split('@')[0],
-                    email: email,
-                    isIncognito: false
-                };
+                currentUser = { id: data.user.id, name: displayName || email.split('@')[0], email, isIncognito: false };
             } else {
-                const { data, error } = await db.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
+                const { data, error } = await db.auth.signInWithPassword({ email, password });
                 if (error) throw error;
-                currentUser = {
-                    id: data.user.id,
-                    name: data.user.user_metadata?.display_name || email.split('@')[0],
-                    email: email,
-                    isIncognito: false
-                };
+                currentUser = { id: data.user.id, name: data.user.user_metadata?.display_name || email.split('@')[0], email, isIncognito: false };
             }
         } else {
-            // ===== FALLBACK: localStorage AUTH =====
             if (authMode === 'register') {
                 const exists = localUsersDb.find(u => u.email === email);
                 if (exists) throw new Error('Email này đã được đăng ký!');
@@ -191,21 +197,23 @@ async function handleAuthSubmit(e) {
                 await setLocalPassword(newUser, password);
                 localUsersDb.push(newUser);
                 localStorage.setItem('mental_health_users', JSON.stringify(localUsersDb));
-                currentUser = { id: null, name: newUser.name, email: email, isIncognito: false };
+                currentUser = { id: null, name: newUser.name, email, isIncognito: false };
             } else {
                 const user = localUsersDb.find(u => u.email === email);
                 if (!user) throw new Error('Sai email hoặc mật khẩu!');
-                const passwordMatches = await verifyLocalPassword(user, password);
-                if (!passwordMatches) throw new Error('Sai email hoặc mật khẩu!');
-                currentUser = { id: null, name: user.name, email: email, isIncognito: false };
+                const ok = await verifyLocalPassword(user, password);
+                if (!ok) throw new Error('Sai email hoặc mật khẩu!');
+                currentUser = { id: null, name: user.name, email, isIncognito: false };
             }
         }
+
+        if (rememberMe) { saveCredentials(email, password); }
+        else { clearSavedCredentials(); }
+
         step = 'start';
     } catch (err) {
-        authError = err.message === 'Invalid login credentials'
-            ? 'Sai email hoặc mật khẩu!'
-            : err.message === 'User already registered'
-                ? 'Email này đã được đăng ký!'
+        authError = err.message === 'Invalid login credentials' ? 'Sai email hoặc mật khẩu!'
+            : err.message === 'User already registered' ? 'Email này đã được đăng ký!'
                 : err.message;
     }
     authLoading = false;
@@ -219,71 +227,143 @@ function handleIncognitoLogin() {
     renderApp();
 }
 
-async function handleChangePassword() {
-    if (!currentUser || currentUser.isIncognito) {
-        window.alert('Bạn đang ở chế độ ẩn danh nên không thể đổi mật khẩu.');
-        return;
-    }
-    const newPassword = window.prompt('Nhập mật khẩu mới (tối thiểu 6 ký tự):');
-    if (!newPassword) return;
-    if (newPassword.length < 6) {
-        window.alert('Mật khẩu mới phải có ít nhất 6 ký tự.');
-        return;
-    }
-    const confirmPassword = window.prompt('Xác nhận mật khẩu mới:');
-    if (newPassword !== confirmPassword) {
-        window.alert('Xác nhận mật khẩu không khớp.');
-        return;
-    }
+function showChangePasswordModal() {
+    if (!currentUser || currentUser.isIncognito) return;
+    // Remove existing modal if any
+    const existing = document.getElementById('changePwModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'changePwModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+    modal.innerHTML = `
+        <div style="position:absolute;inset:0;background:rgba(13,51,72,0.45);backdrop-filter:blur(6px);" onclick="closeChangePasswordModal()"></div>
+        <div style="position:relative;z-index:1;width:100%;max-width:420px;background:#fff;border-radius:24px;padding:2rem;box-shadow:0 24px 64px rgba(13,51,72,0.22);border:1px solid rgba(79,142,201,0.12);">
+            <div class="flex items-center gap-3 mb-5">
+                <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#4F8EC9,#42C8A8);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i data-lucide="key-round" style="width:18px;height:18px;color:#fff;"></i>
+                </div>
+                <div>
+                    <h3 style="font-size:1.1rem;font-weight:900;color:#0D3348;margin:0;line-height:1.2;">Đổi mật khẩu</h3>
+                    <p style="font-size:11px;color:#94a3b8;font-weight:600;margin:0;">${currentUser.email || ''}</p>
+                </div>
+                <button onclick="closeChangePasswordModal()" style="margin-left:auto;width:32px;height:32px;border-radius:8px;background:#f1f5f9;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;">
+                    <i data-lucide="x" style="width:16px;height:16px;"></i>
+                </button>
+            </div>
+            <div id="cpwError" style="display:none;margin-bottom:1rem;padding:0.75rem;border-radius:12px;background:#FFF1F2;border:1px solid #FECDD3;color:#BE123C;font-size:13px;font-weight:700;"></div>
+            <div id="cpwSuccess" style="display:none;margin-bottom:1rem;padding:0.75rem;border-radius:12px;background:#F0FDF4;border:1px solid #BBF7D0;color:#15803D;font-size:13px;font-weight:700;"></div>
+            <div style="margin-bottom:1rem;">
+                <label style="display:block;font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Mật khẩu mới</label>
+                <div class="password-wrapper">
+                    <input type="password" id="cpwNew" placeholder="Tối thiểu 6 ký tự" minlength="6"
+                        style="width:100%;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:0.75rem 3rem 0.75rem 1rem;font-size:14px;color:#1e293b;outline:none;font-family:inherit;"
+                        oninput="this.style.borderColor='#4F8EC9'">
+                    <button type="button" class="password-toggle-btn" onclick="toggleCpwVisibility('cpwNew','cpwNewIcon')" style="right:0.75rem;">
+                        <i data-lucide="eye-off" id="cpwNewIcon" style="width:18px;height:18px;"></i>
+                    </button>
+                </div>
+            </div>
+            <div style="margin-bottom:1.5rem;">
+                <label style="display:block;font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Xác nhận mật khẩu mới</label>
+                <div class="password-wrapper">
+                    <input type="password" id="cpwConfirm" placeholder="Nhập lại mật khẩu mới"
+                        style="width:100%;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:0.75rem 3rem 0.75rem 1rem;font-size:14px;color:#1e293b;outline:none;font-family:inherit;"
+                        oninput="this.style.borderColor='#4F8EC9'">
+                    <button type="button" class="password-toggle-btn" onclick="toggleCpwVisibility('cpwConfirm','cpwConfirmIcon')" style="right:0.75rem;">
+                        <i data-lucide="eye-off" id="cpwConfirmIcon" style="width:18px;height:18px;"></i>
+                    </button>
+                </div>
+            </div>
+            <button onclick="submitChangePassword()" id="cpwSubmitBtn" class="btn-primary w-full" style="border-radius:14px;padding:0.9rem 1.5rem;font-size:1rem;">
+                Cập nhật mật khẩu <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
+            </button>
+        </div>`;
+    document.body.appendChild(modal);
+    lucide.createIcons();
+    setTimeout(() => { const el = document.getElementById('cpwNew'); if (el) el.focus(); }, 50);
+}
+
+function toggleCpwVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    if (!input) return;
+    const hidden = input.type === 'password';
+    input.type = hidden ? 'text' : 'password';
+    if (icon) { icon.setAttribute('data-lucide', hidden ? 'eye' : 'eye-off'); lucide.createIcons(); }
+}
+
+function closeChangePasswordModal() {
+    const modal = document.getElementById('changePwModal');
+    if (modal) modal.remove();
+}
+
+async function submitChangePassword() {
+    const newPassword = document.getElementById('cpwNew')?.value || '';
+    const confirmPassword = document.getElementById('cpwConfirm')?.value || '';
+    const errEl = document.getElementById('cpwError');
+    const sucEl = document.getElementById('cpwSuccess');
+    const btn = document.getElementById('cpwSubmitBtn');
+    const showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } if (sucEl) sucEl.style.display = 'none'; };
+    const showSuc = (msg) => { if (sucEl) { sucEl.textContent = msg; sucEl.style.display = 'block'; } if (errEl) errEl.style.display = 'none'; };
+    if (!newPassword) { showErr('Vui lòng nhập mật khẩu mới.'); return; }
+    if (newPassword.length < 6) { showErr('Mật khẩu mới phải có ít nhất 6 ký tự.'); return; }
+    if (newPassword !== confirmPassword) { showErr('Xác nhận mật khẩu không khớp.'); return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Đang cập nhật...'; }
     try {
         if (supabaseReady) {
             const { error } = await db.auth.updateUser({ password: newPassword });
             if (error) throw error;
         } else {
             const userIndex = localUsersDb.findIndex(u => u.email === currentUser.email);
-            if (userIndex === -1) throw new Error('Không tìm thấy tài khoản trong hệ thống.');
+            if (userIndex === -1) throw new Error('Không tìm thấy tài khoản.');
             await setLocalPassword(localUsersDb[userIndex], newPassword);
             localStorage.setItem('mental_health_users', JSON.stringify(localUsersDb));
         }
-        window.alert('Đổi mật khẩu thành công.');
+        const saved = getSavedCredentials();
+        if (saved && saved.email === currentUser.email) saveCredentials(currentUser.email, newPassword);
+        showSuc('Đổi mật khẩu thành công!');
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Cập nhật mật khẩu <i data-lucide="check-circle" style="width:18px;height:18px;"></i>'; lucide.createIcons(); }
+        setTimeout(() => closeChangePasswordModal(), 1800);
     } catch (err) {
-        window.alert(err.message || 'Không thể đổi mật khẩu lúc này.');
+        showErr(err.message || 'Không thể đổi mật khẩu lúc này.');
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Cập nhật mật khẩu <i data-lucide="check-circle" style="width:18px;height:18px;"></i>'; lucide.createIcons(); }
     }
+}
+
+async function handleChangePassword() {
+    if (!currentUser || currentUser.isIncognito) {
+        window.alert('Bạn đang ở chế độ ẩn danh nên không thể đổi mật khẩu.');
+        return;
+    }
+    showChangePasswordModal();
 }
 
 async function handleLogout() {
-    if (supabaseReady) {
-        try { await db.auth.signOut(); } catch (e) { }
-    }
-    currentUser = null;
-    step = 'auth';
-    authMode = 'login';
-    authError = '';
-    authSuccess = '';
+    if (supabaseReady) { try { await db.auth.signOut(); } catch (e) { } }
+    currentUser = null; step = 'auth'; authMode = 'login'; authError = ''; authSuccess = '';
     renderApp();
 }
 
+// ===== SAVE RESULT =====
 async function saveResult(scores) {
-    // LƯU Ý: DASS lưu điểm THÔ (chưa ×2) để tránh nhân đôi.
-    // Khi hiển thị, nhân ×2 tại chỗ (renderResult đã làm đúng: rawVal * 2).
     const record = {
         user_name: currentUser?.isIncognito ? currentUser.name : (currentUser?.name || 'Ẩn danh'),
         is_incognito: currentUser?.isIncognito || false,
-        stress: scores.stress,           // điểm thô 0–21
-        anxiety: scores.anxiety,         // điểm thô 0–21
-        depression: scores.depression,   // điểm thô 0–21
-        emotional_exhaustion: scores.emotionalExhaustion, // 0–30
-        cynicism: scores.cynicism,                        // 0–24
-        academic_efficacy: scores.academicEfficacy        // 0–36
+        stress: scores.stress, anxiety: scores.anxiety, depression: scores.depression,
+        emotional_exhaustion: scores.emotionalExhaustion,
+        cynicism: scores.cynicism, academic_efficacy: scores.academicEfficacy
     };
     if (supabaseReady) {
         if (currentUser?.id) record.user_id = currentUser.id;
         const { error } = await db.from('survey_results').insert([record]);
         if (error) console.error('Lỗi lưu Supabase:', error.message);
-        else console.log('✅ Đã lưu kết quả lên máy chủ!');
     }
-    // Luôn lưu localStorage để có fallback
-    // Cộng dồn điểm thô (không nhân ×2 ở đây — sẽ nhân khi hiển thị)
+    // Always save to localStorage history
+    if (currentUser && !currentUser.isIncognito && currentUser.email) {
+        saveToHistory(currentUser.email, scores);
+    }
+    // Community stats
     communityStats.count += 1;
     communityStats.emotionalExhaustion += scores.emotionalExhaustion;
     communityStats.cynicism += scores.cynicism;
@@ -295,27 +375,23 @@ async function saveResult(scores) {
 }
 
 async function loadCommunityStats() {
-    if (!supabaseReady) return; // Dùng localStorage stats đã load ở đầu
+    if (!supabaseReady) return;
     try {
         const { data, error } = await db.from('survey_results').select('*');
         if (error || !data || data.length === 0) return;
-        const count = data.length;
         let totalEE = 0, totalCY = 0, totalAE = 0, totalST = 0, totalAX = 0, totalDE = 0;
         data.forEach(row => {
-            totalEE += row.emotional_exhaustion || 0;
-            totalCY += row.cynicism || 0;
-            totalAE += row.academic_efficacy || 0;
-            totalST += row.stress || 0;
-            totalAX += row.anxiety || 0;
-            totalDE += row.depression || 0;
+            totalEE += row.emotional_exhaustion || 0; totalCY += row.cynicism || 0;
+            totalAE += row.academic_efficacy || 0; totalST += row.stress || 0;
+            totalAX += row.anxiety || 0; totalDE += row.depression || 0;
         });
-        communityStats = { count, emotionalExhaustion: totalEE, cynicism: totalCY, academicEfficacy: totalAE, stress: totalST, anxiety: totalAX, depression: totalDE };
-    } catch (err) {
-        console.error('Lỗi tải thống kê:', err.message);
-    }
+        communityStats = { count: data.length, emotionalExhaustion: totalEE, cynicism: totalCY, academicEfficacy: totalAE, stress: totalST, anxiety: totalAX, depression: totalDE };
+    } catch (err) { console.error('Lỗi tải thống kê:', err.message); }
 }
 
+// ===== SCORING =====
 const getSum = (ansObj, ids) => ids.reduce((total, id) => total + (ansObj[id] || 0), 0);
+
 function getLevelConfig(scale, rawScore) {
     const score = rawScore * 2;
     let label = 'Tốt';
@@ -338,33 +414,27 @@ function getLevelConfig(scale, rawScore) {
 function getAdvice(label) {
     switch (label) {
         case 'Tốt': return 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.';
-        case 'Nhẹ': return 'Có vài dấu hiệu căng thẳng nhẹ. Thử dành 10-15 phút mỗi ngày để nghỉ ngơi, hít thở sâu hoặc đi dạo.';
+        case 'Nhẹ': return 'Có vài dấu hiệu căng thẳng nhẹ. Thử dành 10–15 phút mỗi ngày để nghỉ ngơi, hít thở sâu hoặc đi dạo.';
         case 'Vừa': return 'Mức độ đang ở ngưỡng vừa. Bạn nên sắp xếp lại lịch học hợp lý hơn, thử các kỹ thuật thư giãn và chia sẻ cảm xúc.';
         case 'Nặng': return 'Chỉ số đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc chuyên gia để được hỗ trợ sớm.';
         default: return 'Chỉ số đang ở mức rất cao. Khuyến khích bạn liên hệ ngay với chuyên gia tâm lý hoặc đường dây hỗ trợ sức khỏe tâm thần.';
     }
 }
 
-// ===== BỔ SUNG: Trạng thái tinh thần tổng quát + thước đo ngang (không thay đổi logic tính điểm gốc) =====
 const SEVERITY_LEVELS = ['Tốt', 'Nhẹ', 'Vừa', 'Nặng', 'Rất nặng'];
 const severityRank = (label) => SEVERITY_LEVELS.indexOf(label);
 
-// Lấy mức độ nặng nhất trong 3 chỉ số Stress/Lo âu/Trầm cảm => đại diện cho "Trạng thái tinh thần tổng quát"
 function getOverallMentalState(scores) {
     const rows = [{ id: 'stress' }, { id: 'anxiety' }, { id: 'depression' }];
     const configs = rows.map(r => ({ id: r.id, config: getLevelConfig(r.id, scores[r.id]) }));
     return configs.reduce((worst, cur) => severityRank(cur.config.label) > severityRank(worst.config.label) ? cur : worst);
 }
-
-// % nguy cơ kiệt sức học đường MBI-SS (cùng công thức với biểu đồ donut, tách riêng để không đụng vào initDonutChart gốc)
 function getMbiRiskPct(scores) {
-    const exhaustion = scores.emotionalExhaustion;
-    const cynicism = scores.cynicism;
-    const lowEfficacy = 36 - scores.academicEfficacy;
-    const maxTotal = 30 + 24 + 36;
-    return Math.round(((exhaustion + cynicism + lowEfficacy) / maxTotal) * 100);
+    const isSafe = scores.emotionalExhaustion === 0 && scores.cynicism === 0;
+    if (isSafe) return 0;
+    const lowEfficacy = Math.max(0, 36 - scores.academicEfficacy);
+    return Math.round(((scores.emotionalExhaustion + scores.cynicism + lowEfficacy) / 90) * 100);
 }
-
 function getMbiLevelConfig(riskPct) {
     let label = 'Tốt';
     if (riskPct >= 85) label = 'Rất nặng'; else if (riskPct >= 65) label = 'Nặng';
@@ -374,17 +444,12 @@ function getMbiLevelConfig(riskPct) {
     if (label === 'Vừa') return { label, hex: '#F59E0B' };
     return { label, hex: '#F43F5E' };
 }
-
-// Gộp 5 mức thành đúng 3 dải màu trực quan theo yêu cầu: Xanh lá / Vàng / Đỏ
 function getGaugeBandColor(label) {
     if (label === 'Tốt') return '#10B981';
     if (label === 'Nặng' || label === 'Rất nặng') return '#F43F5E';
-    return '#F59E0B'; // Nhẹ, Vừa
+    return '#F59E0B';
 }
-
-// Vị trí con trỏ trên thước đo (đảm bảo luôn rơi đúng vào dải màu tương ứng với nhãn)
 const GAUGE_MARKER_POSITION = { 'Tốt': 16, 'Nhẹ': 41, 'Vừa': 58, 'Nặng': 75, 'Rất nặng': 92 };
-
 function getClosingLine(label) {
     switch (label) {
         case 'Tốt': return 'Hãy tiếp tục duy trì nhé!';
@@ -394,18 +459,52 @@ function getClosingLine(label) {
     }
 }
 
+// ===== TREND HELPERS =====
+function getTrend(curr, prev) {
+    if (prev === undefined || prev === null) return null;
+    const diff = curr - prev;
+    if (diff === 0) return { dir: 'same', icon: '→', label: 'Không đổi', cls: 'trend-same' };
+    if (diff > 0) return { dir: 'up', icon: '↑', label: '+' + diff, cls: 'trend-up' };
+    return { dir: 'down', icon: '↓', label: String(diff), cls: 'trend-down' };
+}
+
+// For DASS, higher = worse. For efficacy, higher = better.
+function renderTrendBadge(curr, prev, lowerIsBetter = true) {
+    const t = getTrend(curr, prev);
+    if (!t) return '';
+    let isBetter = lowerIsBetter ? t.dir === 'down' : t.dir === 'up';
+    let color = t.dir === 'same' ? '#94A3B8' : (isBetter ? '#10B981' : '#F43F5E');
+    let emoji = t.dir === 'same' ? '→' : (isBetter ? '↓ tốt hơn' : '↑ xấu hơn');
+    return `<span class="score-badge" style="background:${color}15; color:${color};">${emoji} ${Math.abs(curr - prev)}</span>`;
+}
+
+// ===== SPARKLINE SVG =====
+function renderSparkline(values, color = '#4F8EC9', width = 80, height = 30) {
+    if (values.length < 2) return '';
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const range = max - min || 1;
+    const pts = values.map((v, i) => {
+        const x = (i / (values.length - 1)) * width;
+        const y = height - ((v - min) / range) * (height - 4) - 2;
+        return `${x},${y}`;
+    }).join(' ');
+    return `<svg class="sparkline" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none"><polyline points="${pts}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`;
+}
+
+// ===== GAUGE BAR =====
 function renderGaugeBar(title, label) {
     const bandColor = getGaugeBandColor(label);
     const pos = GAUGE_MARKER_POSITION[label];
     return `<div class="rounded-2xl border border-slate-100 bg-white p-4">
         <div class="flex items-center justify-between mb-3 gap-2">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-500">${title}</span>
-            <span class="text-sm font-black" style="color:${bandColor}">${label}</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-400">${title}</span>
+            <span class="score-badge" style="background:${bandColor}18; color:${bandColor};">${label}</span>
         </div>
-        <div class="relative h-3 w-full rounded-full overflow-hidden" style="background: linear-gradient(90deg, #10B981 0%, #10B981 33%, #F59E0B 33%, #F59E0B 66%, #F43F5E 66%, #F43F5E 100%);">
-            <div class="absolute top-1/2 h-5 w-5 rounded-full bg-white shadow-md border-[3px]" style="left: ${pos}%; top: 50%; transform: translate(-50%, -50%); border-color: ${bandColor};"></div>
+        <div class="gauge-track relative">
+            <div class="absolute" style="left:${pos}%; top:50%; transform:translate(-50%,-50%); width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 0 0 3px ${bandColor}, 0 2px 8px rgba(0,0,0,0.15);"></div>
         </div>
-        <div class="flex justify-between mt-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+        <div class="flex justify-between mt-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
             <span>Tốt</span><span>Nhẹ · Vừa</span><span>Nặng · Rất nặng</span>
         </div>
     </div>`;
@@ -417,309 +516,621 @@ function getFirstName(fullName) {
     return parts[parts.length - 1];
 }
 
+// ===== COLLAPSE TOGGLE =====
+function toggleCollapse(key) {
+    collapseState[key] = !collapseState[key];
+    const body = document.getElementById('collapse-' + key);
+    const icon = document.getElementById('icon-' + key);
+    if (body) body.classList.toggle('open', collapseState[key]);
+    if (icon) icon.classList.toggle('open', collapseState[key]);
+}
+
+// ===== RENDER AUTH =====
 function renderAuth() {
     const isLogin = authMode === 'login';
-    const isRegister = authMode === 'register';
+    const saved = getSavedCredentials();
     const cloudBadge = supabaseReady
-        ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest"><i data-lucide="cloud" class="w-3 h-3"></i> Supabase Cloud</span>'
+        ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest"><i data-lucide="cloud" class="w-3 h-3"></i> Cloud Sync</span>'
         : '';
+
     return `
-            <div class="flex-1 flex items-center justify-center px-4 py-12 animate-fade-in bg-brand-surface">
-                <div class="w-full max-w-md bg-white rounded-[2rem] p-8 shadow-xl shadow-teal-100/50 border border-teal-50">
-                    <div class="flex justify-center mb-6">
-                        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-mint to-brand-blue shadow-lg" style="width:72px;height:72px;">
-                            <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:60px;height:60px;object-fit:cover;border-radius:8px;">
-                        </div>
+        <div class="flex-1 flex items-center justify-center px-4 py-10 auth-bg min-h-screen">
+            <div class="w-full max-w-md">
+                <!-- Logo card -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-20 h-20 rounded-[22px] shadow-xl mb-4" style="background:linear-gradient(135deg,#4F8EC9,#42C8A8);">
+                        <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:68px;height:68px;object-fit:cover;border-radius:14px;">
                     </div>
-                    <h2 class="text-3xl font-black text-brand-dark text-center mb-2 tracking-tight">THPT GIA LỘC</h2>
-                    <p class="text-slate-500 text-center text-sm font-semibold mb-2">Khảo sát tâm lý học đường</p>
-                    <div class="flex items-center justify-center gap-2 mb-6">${cloudBadge}</div>
-                    <div class="flex border-b border-slate-100 mb-6 pb-2 gap-6 justify-center">
-                        <span onclick="authMode='login'; authError=''; authSuccess=''; renderApp();" class="auth-tab text-sm font-bold uppercase tracking-wider cursor-pointer ${isLogin ? 'active text-brand-blue' : 'text-slate-400 hover:text-slate-600'}">Đăng nhập</span>
-                        <span onclick="authMode='register'; authError=''; authSuccess=''; renderApp();" class="auth-tab text-sm font-bold uppercase tracking-wider cursor-pointer ${isRegister ? 'active text-brand-blue' : 'text-slate-400 hover:text-slate-600'}">Đăng ký</span>
+                    <h1 class="text-3xl font-black text-slate-800 tracking-tight">THPT Gia Lộc</h1>
+                    <p class="text-sm text-slate-500 font-semibold mt-1">Khảo sát sức khỏe tâm lý học đường</p>
+                </div>
+
+                <div class="card-lg p-8">
+                    ${cloudBadge ? `<div class="flex justify-center mb-5">${cloudBadge}</div>` : ''}
+
+                    <!-- Tabs -->
+                    <div class="flex border-b border-slate-100 mb-6 gap-6">
+                        <span onclick="authMode='login'; authError=''; authSuccess=''; renderApp();" 
+                            class="auth-tab pb-3 text-sm font-black uppercase tracking-wider cursor-pointer ${isLogin ? 'active text-blue-500' : 'text-slate-400 hover:text-slate-600'}">
+                            Đăng nhập
+                        </span>
+                        <span onclick="authMode='register'; authError=''; authSuccess=''; renderApp();" 
+                            class="auth-tab pb-3 text-sm font-black uppercase tracking-wider cursor-pointer ${!isLogin ? 'active text-blue-500' : 'text-slate-400 hover:text-slate-600'}">
+                            Tạo tài khoản
+                        </span>
                     </div>
-                    ${authError ? '<div class="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i><span>' + authError + '</span></div>' : ''}
-                    ${authSuccess ? '<div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i><span>' + authSuccess + '</span></div>' : ''}
-                    
+
+                    ${authError ? `<div class="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i><span>${authError}</span></div>` : ''}
+                    ${authSuccess ? `<div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i><span>${authSuccess}</span></div>` : ''}
+
                     <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
-                        ${!isLogin ? '<div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">Tên hiển thị</label><input type="text" name="name" required placeholder="Ví dụ: Hiệp Bùi đz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition"></div>' : ''}
+                        ${!isLogin ? `<div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Tên hiển thị</label>
+                            <input type="text" name="name" required placeholder="Ví dụ: Bhiep dz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                        </div>` : ''}
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">Email</label>
-                            <input type="email" name="email" required placeholder="your@email.com" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Email</label>
+                            <input type="email" name="email" required placeholder="your@email.com" 
+                                value="${isLogin && saved ? saved.email : ''}"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 ml-1">Mật khẩu</label>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Mật khẩu</label>
                             <div class="password-wrapper">
-                                <input type="password" id="passwordInput" name="password" required minlength="6" placeholder="Tối thiểu 6 ký tự" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue transition">
-                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" id="pwToggleBtn" aria-label="Hiển thị hoặc ẩn mật khẩu" title="Hiển thị / Ẩn mật khẩu">
+                                <input type="password" id="passwordInput" name="password" required minlength="6" 
+                                    placeholder="Tối thiểu 6 ký tự"
+                                    value="${isLogin && saved ? saved.password : ''}"
+                                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                                <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" id="pwToggleBtn" aria-label="Hiển thị hoặc ẩn mật khẩu">
                                     <i data-lucide="eye-off" class="w-5 h-5" id="pwToggleIcon"></i>
                                 </button>
                             </div>
                         </div>
-                        <button type="submit" ${authLoading ? 'disabled' : ''} class="w-full bg-gradient-to-r from-brand-blue to-brand-mint text-white font-black rounded-xl px-4 py-3.5 mt-2 shadow-lg disabled:opacity-60">
-                            ${authLoading ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
+                        ${isLogin ? `
+                        <label class="flex items-center gap-3 cursor-pointer select-none mt-1">
+                            <input type="checkbox" name="rememberMe" class="checkbox-custom" ${saved ? 'checked' : ''}>
+                            <span class="text-sm text-slate-600 font-semibold">Ghi nhớ đăng nhập</span>
+                            ${saved ? '<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Đã lưu</span>' : ''}
+                        </label>` : ''}
+                        <button type="submit" ${authLoading ? 'disabled' : ''} class="btn-primary w-full mt-1 disabled:opacity-60" style="border-radius:14px; padding:0.9rem 1.5rem; font-size:1rem;">
+                            ${authLoading ? '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
                         </button>
                     </form>
 
-                    <div class="mt-6 relative flex items-center justify-center">
-                        <div class="border-t border-slate-200 w-full absolute"></div>
-                        <span class="bg-white px-3 text-xs font-bold text-slate-400 relative z-10 uppercase tracking-widest">Hoặc</span>
+                    <div class="mt-5 relative flex items-center justify-center">
+                        <div class="border-t border-slate-100 w-full absolute"></div>
+                        <span class="bg-white px-3 text-[10px] font-black text-slate-400 relative z-10 uppercase tracking-widest">Hoặc</span>
                     </div>
-                    <button onclick="handleIncognitoLogin()" class="w-full mt-6 bg-slate-50 border border-slate-200 text-slate-600 font-bold rounded-xl px-4 py-3 hover:bg-slate-100 transition-colors flex items-center justify-center gap-2 group">
-                        <i data-lucide="eye-off" class="w-5 h-5 text-slate-400 group-hover:text-brand-blue transition-colors"></i>
-                        <span>Tiếp tục ẩn danh</span>
+                    <button onclick="handleIncognitoLogin()" class="w-full mt-4 bg-slate-50 border border-slate-200 text-slate-600 font-bold rounded-2xl px-4 py-3 hover:bg-slate-100 flex items-center justify-center gap-2 group text-sm">
+                        <i data-lucide="eye-off" class="w-4 h-4 text-slate-400 group-hover:text-blue-500"></i>
+                        Tiếp tục ẩn danh
                     </button>
                 </div>
-            </div>`;
+
+                <p class="text-center text-[10px] text-slate-400 mt-5 font-semibold">
+                    Dữ liệu được mã hóa và bảo mật · THPT Gia Lộc
+                </p>
+            </div>
+        </div>`;
 }
 
+// ===== RENDER HEADER =====
 function renderHeader() {
-    const answeredCount = Object.keys(answers).length;
-    const progress = (answeredCount / QUESTIONS.length) * 100;
     let userHtml = '';
     if (currentUser) {
         const displayName = getFirstName(currentUser.name);
         const avatarUrl = currentUser.isIncognito
-            ? 'https://api.dicebear.com/10.x/big-ears/svg?seed=empn5xvz' + currentUser.name + '&backgroundColor=6BA4CC'
-            : 'https://api.dicebear.com/10.x/avataaars/svg?seed=8j8c4vl3' + currentUser.name + '&backgroundColor=6BA4CC';
-        const isIncognito = currentUser.isIncognito;
+            ? 'https://api.dicebear.com/10.x/big-ears/svg?seed=empn5xvz' + currentUser.name + '&backgroundColor=4F8EC9'
+            : 'https://api.dicebear.com/10.x/avataaars/svg?seed=8j8c4vl3' + currentUser.name + '&backgroundColor=4F8EC9';
         userHtml = `
-                <div class="flex items-center gap-2 md:gap-3 bg-white rounded-full pr-3 pl-1.5 py-1.5 border border-sky-100 shadow-sm">
-                    <img src="${avatarUrl}" alt="Avatar" class="w-8 h-8 rounded-full border border-sky-100 bg-slate-50">
-                    <div class="text-left mr-1 min-w-0">
-                        <p class="text-[9px] font-bold text-slate-400 leading-none uppercase tracking-wider mb-0.5">${isIncognito ? 'Trạng thái' : 'Xin chào,'}</p>
-                        <p class="text-sm font-black text-brand-dark leading-none max-w-[140px] truncate">${isIncognito ? currentUser.name : displayName + '!'}</p>
-                    </div>
-                    ${!isIncognito ? `
-                    <div class="flex items-center gap-1 border-l border-slate-200 pl-2 ml-1">
-                        <button onclick="handleChangePassword()" class="flex items-center justify-center h-7 w-7 rounded-full bg-slate-100 hover:bg-brand-blue hover:text-white transition-colors text-slate-500" title="Đổi mật khẩu">
-                            <i data-lucide="key-round" class="h-3.5 w-3.5"></i>
-                        </button>
-                        <button onclick="handleLogout()" class="flex items-center justify-center h-7 w-7 rounded-full bg-slate-100 hover:bg-rose-500 hover:text-white transition-colors text-slate-500" title="Đăng xuất">
-                            <i data-lucide="log-out" class="h-3.5 w-3.5"></i>
-                        </button>
-                    </div>` : ''}
-                </div>`;
-    }
-    return `
-                <header class="sticky top-0 z-40 bg-white border-b border-sky-100 shadow-sm">
-                    <div class="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-4">
-                            <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-mint to-brand-blue shadow-md" style="width:72px;height:72px;">
-                                <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:60px;height:60px;object-fit:cover;border-radius:6px;">
-                            </div>
-                            <div>
-                                <h1 class="text-lg md:text-2xl font-black tracking-tight text-brand-dark">THPT GIA LỘC</h1>
-                                <p class="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">Khảo sát tâm lý học đường</p>
-                            </div>
-                        </div>
-                        <div>${userHtml}</div>
-                    </div>
-                    ${step === 'quiz' ? '<div class="w-full bg-brand-surface border-t border-teal-100 px-4 py-2"><div class="mx-auto w-full max-w-5xl flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6"><span class="text-xs font-bold uppercase tracking-[0.18em] text-brand-mint text-center whitespace-nowrap">Tiến độ (Câu ' + (currentIndex + 1) + '/' + QUESTIONS.length + ')</span><div class="w-full max-w-[32rem] sm:max-w-[40rem] md:max-w-[48rem] h-3 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-brand-mint to-brand-blue transition-all duration-300" style="width: ' + (((currentIndex + 1) / QUESTIONS.length) * 100) + '%"></div></div></div></div>' : ''}
-                </header>`;
-}
-
-function renderStart() {
-    return `
-            <div class="w-full flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] animate-fade-in bg-brand-surface">
-                <section class="mx-auto flex flex-col items-center text-center w-full max-w-4xl px-6 py-12">
-                    <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-5 py-2 text-sm font-bold text-teal-700 shadow-sm">
-                        <i data-lucide="shield-check" class="h-4 w-4 text-emerald-500"></i><span>Bảo mật & Chuẩn y tế DASS-21, MBI-SS</span>
-                    </div>
-                    <h2 class="text-4xl md:text-6xl font-black leading-tight tracking-tight text-brand-dark mb-6">
-                        Khảo Sát <span class="text-brand-blue">Tâm Lý Học Đường</span>
-                    </h2>
-                    <div class="w-full max-w-2xl text-left">
-                        <p class="mt-2 text-lg leading-8 text-slate-600 font-medium">
-                            Hệ thống đánh giá chuyên sâu giúp bạn hiểu rõ mức độ Căng thẳng, Lo âu, Trầm cảm và Kiệt quệ.
-                            Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng nền tảng thang đo chuẩn hoá quốc tế DASS-21 và MBI-SS, kết hợp cùng các chỉ số kiểm định dữ liệu độc lập để đảm bảo tính khách quan.
-                        </p>
-                        ${currentUser?.isIncognito ? `
-                        <p class="mt-4 text-sm leading-6 text-slate-500">
-                            Dữ liệu được mã hóa ẩn danh.
-                        </p>` : ''}
-                    </div>
-                    <div class="mt-6 grid gap-4 sm:grid-cols-2 w-full max-w-2xl">
-                        <div class="rounded-3xl border border-brand-blue/20 bg-brand-blue/10 p-5 text-center shadow-sm">
-                            <p class="text-sm font-semibold uppercase tracking-[0.22em] text-brand-dark">DASS-21</p>
-                            <p class="mt-3 text-3xl font-black text-brand-blue">24 câu</p>
-                            <p class="mt-1 text-[11px] font-semibold text-brand-dark/60">Đã gồm 3 câu kiểm định nhất quán</p>
-                        </div>
-                        <div class="rounded-3xl border border-brand-mint/20 bg-brand-mint/10 p-5 text-center shadow-sm">
-                            <p class="text-sm font-semibold uppercase tracking-[0.22em] text-brand-dark">MBI-SS</p>
-                            <p class="mt-3 text-3xl font-black text-brand-blue">18 câu</p>
-                            <p class="mt-1 text-[11px] font-semibold text-brand-dark/60">Đã gồm 3 câu kiểm định nhất quán</p>
-                        </div>
-                    </div>
-                    <p class="mt-6 text-lg leading-8 text-slate-600 max-w-2xl font-medium">
-                        Thời gian hoàn thành dự kiến: 4 - 5 phút
-                    </p>
-                    <div class="mt-10">
-                        <button type="button" onclick="handleStart()" class="inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-brand-blue to-brand-mint px-10 py-5 text-xl font-black text-white shadow-xl shadow-teal-200/80">
-                            <span>Bắt đầu kiểm tra</span><i data-lucide="arrow-right" class="h-6 w-6"></i>
-                        </button>
-                    </div>
-                </section>
+            <div class="flex items-center gap-2 bg-white rounded-full pr-3 pl-1.5 py-1.5 border border-slate-100 shadow-sm">
+                <img src="${avatarUrl}" alt="Avatar" class="w-8 h-8 rounded-full border border-slate-100 bg-slate-50">
+                <div class="text-left mr-1 min-w-0">
+                    <p class="text-[9px] font-bold text-slate-400 leading-none uppercase tracking-wider mb-0.5">${currentUser.isIncognito ? 'Ẩn danh' : 'Xin chào,'}</p>
+                    <p class="text-sm font-black text-slate-800 leading-none max-w-[130px] truncate">${currentUser.isIncognito ? currentUser.name : displayName + '!'}</p>
+                </div>
+                ${!currentUser.isIncognito ? `
+                <div class="flex items-center gap-1 border-l border-slate-100 pl-2 ml-1">
+                    <button onclick="handleChangePassword()" class="flex items-center justify-center h-7 w-7 rounded-full bg-slate-50 hover:bg-blue-500 hover:text-white text-slate-400" title="Đổi mật khẩu">
+                        <i data-lucide="key-round" class="h-3.5 w-3.5"></i>
+                    </button>
+                    <button onclick="handleLogout()" class="flex items-center justify-center h-7 w-7 rounded-full bg-slate-50 hover:bg-rose-500 hover:text-white text-slate-400" title="Đăng xuất">
+                        <i data-lucide="log-out" class="h-3.5 w-3.5"></i>
+                    </button>
+                </div>` : ''}
             </div>`;
+    }
+
+    const progressBar = step === 'quiz' ? `
+        <div class="w-full bg-white border-t border-slate-100 px-4 py-2.5">
+            <div class="mx-auto w-full max-w-5xl flex items-center gap-4">
+                <span class="text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap shrink-0">${currentIndex + 1} / ${QUESTIONS.length}</span>
+                <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                    <div class="h-full rounded-full" style="width:${((currentIndex + 1) / QUESTIONS.length) * 100}%; background:linear-gradient(90deg,#4F8EC9,#42C8A8);"></div>
+                </div>
+                <span class="text-xs font-black text-slate-400 shrink-0">${Math.round(((currentIndex + 1) / QUESTIONS.length) * 100)}%</span>
+            </div>
+        </div>` : '';
+
+    return `
+        <header class="site-header sticky top-0 z-40">
+            <div class="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center justify-center rounded-xl shadow-md shrink-0" style="width:52px;height:52px;background:linear-gradient(135deg,#4F8EC9,#42C8A8);">
+                        <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:44px;height:44px;object-fit:cover;border-radius:8px;">
+                    </div>
+                    <div>
+                        <h1 class="text-base md:text-xl font-black tracking-tight text-slate-800">THPT Gia Lộc</h1>
+                        <p class="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hidden sm:block">Khảo Sát Tâm Lý Học Đường</p>
+                    </div>
+                </div>
+                <div>${userHtml}</div>
+            </div>
+            ${progressBar}
+        </header>`;
 }
 
+// ===== RENDER START =====
+function renderStart() {
+    const history = currentUser && !currentUser.isIncognito ? getUserHistory(currentUser.email) : [];
+    const historyHtml = history.length > 0 ? `
+        <div class="w-full max-w-2xl mt-6">
+            <div class="card p-5">
+                <div class="flex items-center gap-2 mb-4">
+                    <i data-lucide="history" class="w-4 h-4 text-blue-500"></i>
+                    <span class="text-sm font-black text-slate-700 uppercase tracking-wider">Lần khảo sát gần nhất</span>
+                </div>
+                ${renderMiniHistory(history[0], history[1])}
+            </div>
+        </div>` : '';
+
+    return `
+        <div class="w-full flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] bg-brand-surface px-4 py-10">
+            <section class="mx-auto flex flex-col items-center text-center w-full max-w-4xl">
+                <div class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-5 py-2 text-sm font-bold text-blue-600 shadow-sm mb-6">
+                    <i data-lucide="shield-check" class="h-4 w-4 text-emerald-500"></i>
+                    <span>Chuẩn y tế DASS-21 · MBI-SS</span>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-black leading-tight tracking-tight text-slate-800 mb-3">
+                    Khảo Sát <span class="brand-gradient-text">Tâm Lý Học Đường</span>
+                </h2>
+                <p class="text-slate-500 font-medium max-w-lg text-base"> center
+                    Hệ thống đánh giá chuyên sâu giúp bạn hiểu rõ mức độ Căng thẳng, Lo âu, Trầm cảm và Kiệt quệ. Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng nền tảng thang đo chuẩn hoá quốc tế DASS-21 và MBI-SS, kết hợp cùng các chỉ số kiểm định dữ liệu độc lập để đảm bảo tính khách quan.
+                </p>
+            
+
+                <div class="mt-8 grid gap-4 sm:grid-cols-2 w-full max-w-md">
+                    <div class="rounded-2xl border-2 border-blue-200 bg-white p-5 text-center shadow-md" style="box-shadow:0 4px 20px rgba(79,142,201,0.18);">
+                        <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1" style="color:#4F8EC9; letter-spacing:0.18em;">DASS-21</p>
+                        <p class="text-4xl font-black brand-gradient-text">24 câu</p>
+                        <p class="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
+                    </div>
+                    <div class="rounded-2xl border-2 border-teal-200 bg-white p-5 text-center shadow-md" style="box-shadow:0 4px 20px rgba(66,200,168,0.18);">
+                        <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1" style="color:#42C8A8; letter-spacing:0.18em;">MBI-SS</p>
+                        <p class="text-4xl font-black brand-gradient-text">18 câu</p>
+                        <p class="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm font-bold text-slate-500">Thời gian hoàn thành dự kiến: <span class="font-black text-slate-700">4 – 5 phút</span></p>
+
+                ${historyHtml}
+
+                <div class="mt-8">
+                    <button type="button" onclick="handleStart()" class="btn-primary text-lg px-12 py-4">
+                        <span>Bắt đầu</span>
+                        <i data-lucide="arrow-right" class="h-5 w-5"></i>
+                    </button>
+                </div>
+            </section>
+        </div>`;
+}
+
+function renderMiniHistory(latest, prev) {
+    if (!latest) return '';
+    const d = new Date(latest.date);
+    const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const stressLabel = getLevelConfig('stress', latest.scores.stress).label;
+    const anxLabel = getLevelConfig('anxiety', latest.scores.anxiety).label;
+    const depLabel = getLevelConfig('depression', latest.scores.depression).label;
+    const mbiPct = getMbiRiskPct(latest.scores);
+    const mbiLvl = getMbiLevelConfig(mbiPct);
+
+    const badge = (label) => {
+        const c = getGaugeBandColor(label);
+        return `<span class="score-badge" style="background:${c}18;color:${c};">${label}</span>`;
+    };
+
+    return `
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Stress</p>
+                ${badge(stressLabel)}
+                ${prev ? renderTrendBadge(latest.scores.stress, prev.scores.stress, true) : ''}
+            </div>
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Lo âu</p>
+                ${badge(anxLabel)}
+                ${prev ? renderTrendBadge(latest.scores.anxiety, prev.scores.anxiety, true) : ''}
+            </div>
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Trầm cảm</p>
+                ${badge(depLabel)}
+                ${prev ? renderTrendBadge(latest.scores.depression, prev.scores.depression, true) : ''}
+            </div>
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Burnout</p>
+                <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
+            </div>
+        </div>
+        <p class="text-[10px] text-slate-400 font-semibold mt-3 text-right">Lần khảo sát: ${dateStr}</p>`;
+}
+
+// ===== RENDER QUIZ =====
 function renderQuiz() {
     const q = QUESTIONS[currentIndex];
     const answeredCount = Object.keys(answers).length;
     const allAnswered = answeredCount === QUESTIONS.length;
     const isLast = currentIndex === QUESTIONS.length - 1;
+
     const navButtons = QUESTIONS.map((item, idx) => {
         let cls = 'nav-btn-default';
         if (currentIndex === idx) cls = 'nav-btn-active';
         else if (answers[item.id] !== undefined) cls = 'nav-btn-answered';
-        return '<button type="button" onclick="handleJump(' + idx + ')" class="nav-btn w-full text-xs transition ' + cls + '"><span>' + (idx + 1) + '</span></button>';
+        return `<button type="button" onclick="handleJump(${idx})" class="nav-btn w-full ${cls}"><span>${idx + 1}</span></button>`;
     }).join('');
+
     const optionsHTML = q.scale.map(opt => {
         const isSelected = answers[q.id] === opt.value;
-        const bgC = isSelected ? 'border-brand-blue bg-sky-50 shadow-md shadow-sky-100' : 'border-slate-200 bg-white hover:border-sky-300 hover:bg-slate-50';
-        const bgN = isSelected ? 'bg-brand-blue text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-sky-100 group-hover:text-sky-700';
-        return '<div onclick="handleAnswer(\'' + q.id + '\', ' + opt.value + ')" class="group flex cursor-pointer flex-col gap-3 rounded-2xl border p-4 transition-all duration-200 ' + bgC + '"><span class="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black transition ' + bgN + '">' + opt.value + '</span><span class="text-sm font-bold leading-5 text-slate-700">' + opt.label + '</span></div>';
+        const bgC = isSelected ? 'border-blue-400 bg-blue-50 shadow-md shadow-blue-100' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50';
+        const bgN = isSelected ? 'text-white' : 'bg-slate-100 text-slate-500';
+        const numStyle = isSelected ? 'background:linear-gradient(135deg,#4F8EC9,#42C8A8);' : '';
+        return `<div onclick="handleAnswer('${q.id}', ${opt.value})" class="group flex cursor-pointer flex-col gap-3 rounded-2xl border p-4 ${bgC}">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black ${bgN}" style="${numStyle}">${opt.value}</span>
+            <span class="text-sm font-bold leading-5 text-slate-700">${opt.label}</span>
+        </div>`;
     }).join('');
+
     return `
-                <section class="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 md:px-8 py-6 md:py-8 animate-fade-in">
-                    <nav class="rounded-[1.75rem] border border-sky-100 bg-white p-4 shadow-sm">
-                        <div class="nav-box">
-                            <div class="nav-grid">${navButtons}</div>
-                        </div>
-                    </nav>
-                    <article class="overflow-hidden rounded-[2rem] border border-sky-100 bg-white shadow-xl shadow-sky-100/60">
-                        <div class="p-5 md:p-10">
-                            <div class="mb-6 flex flex-wrap items-center gap-2">
-                                <span class="rounded-full bg-brand-dark text-white px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em]">${q.sectionTitle}</span>
-                                <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-slate-600">Câu ${currentIndex + 1}</span>
-                            </div>
-                            <h2 class="max-w-4xl text-xl md:text-4xl font-black leading-tight tracking-[-0.03em] text-brand-dark">${q.text}</h2>
-                            <div class="mt-8 grid gap-3 ${q.section === 'MBI-SS' ? 'grid-cols-2 md:grid-cols-7' : 'grid-cols-1 md:grid-cols-4'}">${optionsHTML}</div>
-                        </div>
-                        <footer class="flex items-center justify-between gap-3 border-t border-slate-100 bg-brand-surface p-4 md:p-6">
-                            <button type="button" onclick="handlePrev()" ${currentIndex === 0 ? 'disabled' : ''} class="inline-flex items-center gap-2 rounded-2xl px-4 py-3 font-black text-slate-600 transition hover:bg-white disabled:opacity-35">
-                                <i data-lucide="chevron-left" class="h-5 w-5"></i><span class="hidden md:inline">Câu trước</span>
-                            </button>
-                            ${isLast ? '<button type="button" onclick="handleSubmit()" ' + (!allAnswered ? 'disabled' : '') + ' class="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-brand-blue to-brand-mint px-6 py-3 font-black text-white shadow-lg disabled:opacity-45"><span>Nộp bài</span><i data-lucide="check-circle" class="h-5 w-5"></i></button>' : '<button type="button" onclick="handleNext()" class="inline-flex items-center gap-2 rounded-2xl bg-brand-dark px-6 py-3 font-black text-white shadow-lg"><span>Tiếp theo</span><i data-lucide="chevron-right" class="h-5 w-5"></i></button>'}
-                        </footer>
-                    </article>
-                </section>`;
+        <section class="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 md:px-8 py-6 quiz-page">
+            <nav class="card p-4">
+                <div class="nav-box"><div class="nav-grid">${navButtons}</div></div>
+            </nav>
+            <article class="card-lg overflow-hidden">
+                <div class="p-5 md:p-10">
+                    <div class="mb-5 flex flex-wrap items-center gap-2">
+                        <span class="rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-widest text-white" style="background:linear-gradient(135deg,#4F8EC9,#42C8A8);">${q.sectionTitle}</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-slate-500">Câu ${currentIndex + 1}</span>
+                    </div>
+                    <h2 class="max-w-4xl text-xl md:text-3xl font-black leading-tight text-slate-800">${q.text}</h2>
+                    <div class="mt-8 grid gap-3 ${q.section === 'MBI-SS' ? 'grid-cols-2 md:grid-cols-7' : 'grid-cols-1 md:grid-cols-4'}">${optionsHTML}</div>
+                </div>
+                <footer class="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 p-4 md:p-6">
+                    <button type="button" onclick="handlePrev()" ${currentIndex === 0 ? 'disabled' : ''} class="btn-ghost disabled:opacity-40">
+                        <i data-lucide="chevron-left" class="h-5 w-5"></i><span class="hidden md:inline">Câu trước</span>
+                    </button>
+                    <span class="text-xs font-bold text-slate-400">${answeredCount}/${QUESTIONS.length} đã trả lời</span>
+                    ${isLast
+            ? `<button type="button" onclick="handleSubmit()" ${!allAnswered ? 'disabled' : ''} class="btn-primary disabled:opacity-50" style="border-radius:12px;padding:0.65rem 1.5rem;">
+                            <span>Nộp bài</span><i data-lucide="check-circle" class="h-5 w-5"></i>
+                           </button>`
+            : `<button type="button" onclick="handleNext()" class="btn-primary" style="border-radius:12px;padding:0.65rem 1.5rem;">
+                            <span>Tiếp theo</span><i data-lucide="chevron-right" class="h-5 w-5"></i>
+                           </button>`}
+                </footer>
+            </article>
+        </section>`;
 }
 
+// ===== RENDER RESULT =====
 function renderResult() {
     const MBI_ROWS = [
         { id: 'emotionalExhaustion', title: 'Kiệt quệ cảm xúc', max: 30 },
         { id: 'cynicism', title: 'Hoài nghi', max: 24 },
-        { id: 'academicEfficacy', title: 'Ảnh hưởng học tập', max: 36 }
+        { id: 'academicEfficacy', title: 'Hiệu quả học tập', max: 36, higherBetter: true }
     ];
     const DASS_ROWS = [
         { id: 'stress', title: 'Stress', max: 42 },
         { id: 'anxiety', title: 'Lo âu', max: 42 },
         { id: 'depression', title: 'Trầm cảm', max: 42 }
     ];
+
+    const overallState = getOverallMentalState(currentScores);
+    const mbiRiskPct = getMbiRiskPct(currentScores);
+    const mbiLevel = getMbiLevelConfig(mbiRiskPct);
+    const adviceLabel = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? mbiLevel.label : overallState.config.label;
+    const adviceColor = getGaugeBandColor(adviceLabel);
+
+    // MBI cards
     const mbiHTML = MBI_ROWS.map(row => {
         const val = currentScores[row.id];
         const pct = Math.round((val / row.max) * 100);
-        return '<article class="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm"><div class="flex items-end justify-between gap-4"><h3 class="text-sm font-black text-brand-dark">' + row.title + '</h3><strong class="font-mono text-xl text-brand-dark">' + val + '<span class="text-xs text-slate-400">/' + row.max + '</span></strong></div><div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-brand-blue to-brand-mint" style="width: ' + pct + '%"></div></div></article>';
+        const color = row.higherBetter ? (pct >= 60 ? '#10B981' : '#F59E0B') : (pct >= 60 ? '#F43F5E' : pct >= 30 ? '#F59E0B' : '#10B981');
+        return `<div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-black text-slate-600">${row.title}</span>
+                <span class="font-mono text-base font-black" style="color:${color};">${val}<span class="text-xs text-slate-400 font-semibold">/${row.max}</span></span>
+            </div>
+            <div class="h-2 rounded-full bg-slate-200 overflow-hidden">
+                <div class="h-full rounded-full" style="width:${pct}%; background:${color};"></div>
+            </div>
+        </div>`;
     }).join('');
+
+    // DASS cards (compact)
     const dassHTML = DASS_ROWS.map(row => {
         const rawVal = currentScores[row.id];
         const config = getLevelConfig(row.id, rawVal);
-        return '<article class="rounded-2xl border p-5 shadow-sm ' + config.className + '"><div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2"><i data-lucide="' + config.icon + '" class="w-5 h-5"></i><h3 class="font-black">' + row.title + '</h3></div><span class="h-3 w-3 rounded-full ' + config.dot + '"></span></div><p class="mt-3 font-mono text-3xl font-black">' + (rawVal * 2) + '<span class="text-sm opacity-60">/' + row.max + '</span></p><p class="mt-1 text-sm font-black">' + config.label + '</p><div class="mt-3 p-3 rounded-xl bg-white/60 border border-current/10"><p class="text-xs leading-5"><i data-lucide="lightbulb" class="w-3 h-3 inline mr-1"></i>' + getAdvice(config.label) + '</p></div></article>';
+        const score = rawVal * 2;
+        const pct = Math.round((score / 42) * 100);
+        return `<div class="rounded-2xl border p-4 ${config.className}">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="${config.icon}" class="w-4 h-4"></i>
+                    <span class="font-black text-sm">${row.title}</span>
+                </div>
+                <span class="score-badge" style="background:${config.hex}20; color:${config.hex};">${config.label}</span>
+            </div>
+            <div class="flex items-end gap-3">
+                <span class="font-mono text-2xl font-black">${score}</span>
+                <span class="text-xs text-current opacity-60 mb-1">/ ${row.max}</span>
+                <div class="flex-1 h-1.5 rounded-full bg-current/20 overflow-hidden">
+                    <div class="h-full rounded-full" style="width:${pct}%; background:${config.hex};"></div>
+                </div>
+            </div>
+            <p class="mt-3 text-xs leading-5 opacity-80">${getAdvice(config.label)}</p>
+        </div>`;
     }).join('');
+
     const cloudMsg = supabaseReady
-        ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-2 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-4 h-4"></i> Kết quả đã lưu lên Supabase Cloud</span>'
-        : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-xs font-bold text-amber-700"><i data-lucide="hard-drive" class="w-4 h-4"></i> Kết quả lưu trên máy chủ</span>';
+        ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> Đã lưu lên Cloud</span>'
+        : '<span class="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500"><i data-lucide="save" class="w-3.5 h-3.5"></i> Đã lưu</span>';
+
     const div = communityStats.count > 0 ? communityStats.count : 1;
 
-    // ==== BỔ SUNG: Trạng thái tổng quát (không thay đổi cách tính currentScores gốc) ====
-    const overallState = getOverallMentalState(currentScores); // mức nặng nhất trong Stress/Lo âu/Trầm cảm
-    const mbiRiskPct = getMbiRiskPct(currentScores);
-    const mbiLevel = getMbiLevelConfig(mbiRiskPct); // phân loại Năng lượng học tập từ MBI-SS
-    const adviceLabel = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? mbiLevel.label : overallState.config.label;
-    const adviceColor = getGaugeBandColor(adviceLabel);
-    const overviewHTML = `
-                    <div class="rounded-[2rem] border border-sky-100 bg-white p-6 md:p-8 shadow-xl shadow-sky-100/50">
-                        <div class="text-center mb-7">
-                            <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-4" style="background:${overallState.config.hex}1A; color:${overallState.config.hex}">
-                                <i data-lucide="${overallState.config.icon}" class="h-7 w-7"></i>
-                            </div>
-                            <p class="text-base md:text-xl font-bold text-slate-500">Cảm ơn bạn! Trạng thái tinh thần tổng quát của bạn đang ở mức</p>
-                            <p class="text-4xl md:text-5xl font-black mt-1 tracking-tight" style="color:${overallState.config.hex}">${overallState.config.label}</p>
-                            <p class="mt-3 text-base md:text-lg font-semibold text-slate-500">${getClosingLine(overallState.config.label)}</p>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                            ${renderGaugeBar('Trạng thái Tinh thần Tổng quát', overallState.config.label)}
-                            ${renderGaugeBar('Năng lượng Học tập', mbiLevel.label)}
-                        </div>
-                        <div class="rounded-2xl border p-5 flex gap-3 items-start" style="border-color:${adviceColor}40; background:${adviceColor}0D;">
-                            <i data-lucide="lightbulb" class="h-5 w-5 shrink-0 mt-0.5" style="color:${adviceColor}"></i>
-                            <div>
-                                <p class="text-sm font-black mb-1" style="color:${adviceColor}">Lời khuyên dành cho bạn</p>
-                                <p class="text-sm leading-6 text-slate-600">${getAdvice(adviceLabel)}</p>
-                            </div>
-                        </div>
-                    </div>`;
+    // History section
+    const history = currentUser && !currentUser.isIncognito ? getUserHistory(currentUser.email) : [];
+    const historyHTML = renderHistorySection(history);
 
     return `
-                <section class="mx-auto flex flex-col w-full max-w-4xl gap-6 px-4 py-8 animate-fade-in">
-                    <div class="flex items-center justify-center">${cloudMsg}</div>
-                    ${overviewHTML}
-                    <!-- MBI-SS -->
-                    <div class="rounded-[2rem] border border-sky-100 bg-white p-6 shadow-xl shadow-sky-100/50">
-                        <div class="mb-6 flex items-center justify-between">
-                            <div><p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Đánh giá kiệt quệ học đường</p><h2 class="text-2xl font-black tracking-tight text-brand-dark">Chỉ số Burnout (MBI-SS)</h2></div>
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-600"><i data-lucide="battery-warning" class="h-6 w-6"></i></div>
+        <section class="mx-auto flex flex-col w-full max-w-4xl gap-5 px-4 py-8">
+            <div class="flex items-center justify-center">${cloudMsg}</div>
+
+            <!-- Overview Card -->
+            <div class="card-lg p-6 md:p-8">
+                <div class="text-center mb-6">
+                    <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-3" style="background:${overallState.config.hex}1A;">
+                        <i data-lucide="${overallState.config.icon}" class="h-7 w-7" style="color:${overallState.config.hex};"></i>
+                    </div>
+                    <p class="text-slate-500 font-semibold text-sm">Trạng thái tinh thần tổng quát</p>
+                    <p class="text-4xl md:text-5xl font-black mt-1" style="color:${overallState.config.hex};">${overallState.config.label}</p>
+                    <p class="mt-2 text-sm font-semibold text-slate-500">${getClosingLine(overallState.config.label)}</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                    ${renderGaugeBar('Tinh thần tổng quát', overallState.config.label)}
+                    ${renderGaugeBar('Năng lượng học tập', mbiLevel.label)}
+                </div>
+                <div class="rounded-2xl border p-4 flex gap-3" style="border-color:${adviceColor}30; background:${adviceColor}0A;">
+                    <i data-lucide="lightbulb" class="h-4 w-4 shrink-0 mt-0.5" style="color:${adviceColor};"></i>
+                    <div>
+                        <p class="text-xs font-black mb-1" style="color:${adviceColor};">Lời khuyên</p>
+                        <p class="text-xs leading-5 text-slate-600">${getAdvice(adviceLabel)}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MBI Collapsible Card -->
+            <div class="card-lg overflow-hidden">
+                <div class="collapse-header" onclick="toggleCollapse('mbi')">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50">
+                            <i data-lucide="battery-warning" class="h-5 w-5 text-teal-600"></i>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-6">
-                            <div class="rounded-3xl border border-slate-100 bg-slate-50 p-4 flex flex-col items-center justify-center gap-3">
-                                <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Mức độ nguy cơ kiệt sức</p>
-                                <div class="relative" style="width:160px;height:160px;">
-                                    <canvas id="donutChart" width="160" height="160" style="position:absolute;top:0;left:0;"></canvas>
-                                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
-                                        <strong id="donutCenterValue" class="font-mono text-3xl font-black text-brand-dark" style="display:block;line-height:1;">0%</strong>
-                                        <span id="donutCenterLabel" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider" style="display:block;margin-top:2px;">Nguy cơ</span>
-                                    </div>
+                        <div>
+                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kiệt quệ học đường</p>
+                            <h3 class="text-base font-black text-slate-800">Burnout (MBI-SS)</h3>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="score-badge hidden sm:inline-flex" style="background:${mbiLevel.hex}18; color:${mbiLevel.hex};">${mbiRiskPct}% nguy cơ</span>
+                        <div class="collapse-icon ${collapseState.mbi ? 'open' : ''}" id="icon-mbi">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="collapse-body ${collapseState.mbi ? 'open' : ''}" id="collapse-mbi">
+                    <div class="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-5 pb-2">
+                        <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col items-center gap-3">
+                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Mức độ nguy cơ</p>
+                            <div class="relative" style="width:160px;height:160px;">
+                                <canvas id="donutChart" width="160" height="160" style="position:absolute;top:0;left:0;"></canvas>
+                                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+                                    <strong id="donutCenterValue" class="font-mono text-3xl font-black block" style="line-height:1; color:${mbiLevel.hex};">0%</strong>
+                                    <span id="donutCenterLabel" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mt-0.5">${mbiLevel.label}</span>
                                 </div>
-                                <div id="donutLegend" class="flex flex-col gap-1 w-full text-xs font-semibold text-slate-600"></div>
                             </div>
-                            <div class="space-y-3 flex flex-col justify-center">${mbiHTML}</div>
+                            <div id="donutLegend" class="flex flex-col gap-1 w-full text-xs font-semibold text-slate-600"></div>
+                        </div>
+                        <div class="space-y-3">${mbiHTML}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DASS Collapsible Card -->
+            <div class="card-lg overflow-hidden">
+                <div class="collapse-header" onclick="toggleCollapse('dass')">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50">
+                            <i data-lucide="brain" class="h-5 w-5 text-sky-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Tâm lý lâm sàng</p>
+                            <h3 class="text-base font-black text-slate-800">Chỉ số DASS-21</h3>
                         </div>
                     </div>
-                    <!-- DASS-21 -->
-                    <div class="rounded-[2rem] border border-sky-100 bg-white p-6 shadow-xl shadow-sky-100/50">
-                        <div class="mb-6 flex items-center justify-between">
-                            <div><p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Đánh giá tâm lý lâm sàng</p><h2 class="text-2xl font-black tracking-tight text-brand-dark">Chỉ số DASS-21</h2></div>
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 text-sky-600"><i data-lucide="brain" class="h-6 w-6"></i></div>
+                    <div class="flex items-center gap-3">
+                        <div class="hidden sm:flex gap-1.5">
+                            ${DASS_ROWS.map(r => {
+        const c = getLevelConfig(r.id, currentScores[r.id]);
+        return `<span class="score-badge" style="background:${c.hex}18; color:${c.hex};">${r.title.slice(0, 2)} ${c.label}</span>`;
+    }).join('')}
                         </div>
-                        <div class="chart-wrap h-64 mb-6"><canvas id="dassBarChart"></canvas></div>
-                        <div class="grid grid-cols-1 gap-4">${dassHTML}</div>
-                    </div>
-                    <!-- Thống kê cộng đồng -->
-                    <div class="rounded-[2rem] border border-sky-100 bg-white p-6 shadow-xl shadow-sky-100/50">
-                        <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div><p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">So sánh tương quan</p><h2 class="text-2xl font-black tracking-tight text-brand-dark">Thống kê cộng đồng</h2></div>
-                            <div class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600"><i data-lucide="users" class="h-4 w-4"></i><span>${communityStats.count} lượt</span></div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                <h3 class="text-xs font-black uppercase tracking-widest text-brand-dark mb-4">MBI-SS (Trung bình)</h3>
-                                <div class="chart-wrap h-48"><canvas id="communityMbiChart"></canvas></div>
-                            </div>
-                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                                <h3 class="text-xs font-black uppercase tracking-widest text-brand-dark mb-4">DASS-21 (Trung bình)</h3>
-                                <div class="chart-wrap h-48"><canvas id="communityDassChart"></canvas></div>
-                            </div>
-                        </div>
-                        <div class="mt-8 flex justify-center">
-                            <button type="button" onclick="handleReset()" class="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-blue to-brand-mint px-8 py-4 font-black text-white shadow-lg">
-                                <i data-lucide="rotate-ccw" class="h-5 w-5"></i><span>Làm lại khảo sát</span>
-                            </button>
+                        <div class="collapse-icon ${collapseState.dass ? 'open' : ''}" id="icon-dass">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
                         </div>
                     </div>
-                </section>`;
+                </div>
+                <div class="collapse-body ${collapseState.dass ? 'open' : ''}" id="collapse-dass">
+                    <div class="chart-wrap h-48 mb-5 mt-1"><canvas id="dassBarChart"></canvas></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pb-2">${dassHTML}</div>
+                </div>
+            </div>
+
+            <!-- History Collapsible -->
+            ${historyHTML}
+
+            <!-- Community Collapsible -->
+            <div class="card-lg overflow-hidden">
+                <div class="collapse-header" onclick="toggleCollapse('community')">
+                    <div class="flex items-center gap-3">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
+                            <i data-lucide="users" class="h-5 w-5 text-violet-600"></i>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">So sánh tương quan</p>
+                            <h3 class="text-base font-black text-slate-800">Thống kê cộng đồng</h3>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="score-badge hidden sm:inline-flex" style="background:#7C3AED18; color:#7C3AED;">${communityStats.count} lượt</span>
+                        <div class="collapse-icon ${collapseState.community ? 'open' : ''}" id="icon-community">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="collapse-body ${collapseState.community ? 'open' : ''}" id="collapse-community">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pb-2">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">MBI-SS Trung bình</h4>
+                            <div class="chart-wrap h-40"><canvas id="communityMbiChart"></canvas></div>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <h4 class="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">DASS-21 Trung bình</h4>
+                            <div class="chart-wrap h-40"><canvas id="communityDassChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="flex justify-center pb-4">
+                <button type="button" onclick="handleReset()" class="btn-primary">
+                    <i data-lucide="rotate-ccw" class="h-5 w-5"></i><span>Làm lại khảo sát</span>
+                </button>
+            </div>
+        </section>`;
 }
 
+// ===== HISTORY SECTION =====
+function renderHistorySection(history) {
+    if (!history || history.length === 0) return '';
+
+    const items = history.slice(0, 10).map((entry, idx) => {
+        const prev = history[idx + 1];
+        const d = new Date(entry.date);
+        const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        const mbiPct = getMbiRiskPct(entry.scores);
+        const mbiLvl = getMbiLevelConfig(mbiPct);
+        const isLatest = idx === 0;
+
+        const miniRows = [
+            { id: 'stress', label: 'Stress', v: entry.scores.stress, lowerBetter: true },
+            { id: 'anxiety', label: 'Lo âu', v: entry.scores.anxiety, lowerBetter: true },
+            { id: 'depression', label: 'Trầm cảm', v: entry.scores.depression, lowerBetter: true },
+        ];
+
+        const cellsHTML = miniRows.map(row => {
+            const cfg = getLevelConfig(row.id, row.v);
+            const prevV = prev ? prev.scores[row.id] : null;
+            const trend = getTrend(row.v, prevV);
+            let trendHtml = '';
+            if (trend && trend.dir !== 'same') {
+                const isBetter = row.lowerBetter ? trend.dir === 'down' : trend.dir === 'up';
+                const tColor = isBetter ? '#10B981' : '#F43F5E';
+                trendHtml = `<span style="color:${tColor}; font-size:9px; font-weight:900;">${trend.dir === 'up' ? '↑' : '↓'}${Math.abs(row.v - prevV)}</span>`;
+            }
+            return `<div class="text-center">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">${row.label}</p>
+                <span class="score-badge" style="background:${cfg.hex}18; color:${cfg.hex}; font-size:9px;">${cfg.label}</span>
+                <div class="mt-0.5">${trendHtml}</div>
+            </div>`;
+        }).join('');
+
+        return `
+            <div class="history-item">
+                <div class="history-dot" style="background:${isLatest ? '#4F8EC9' : '#CBD5E1'};"></div>
+                <div class="history-card">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                            <span class="text-xs font-black text-slate-700">${dateStr}</span>
+                            <span class="text-[10px] text-slate-400 ml-2">${timeStr}</span>
+                            ${isLatest ? '<span class="ml-2 score-badge" style="background:#4F8EC918;color:#4F8EC9;">Mới nhất</span>' : ''}
+                        </div>
+                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Burnout ${mbiPct}%</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">${cellsHTML}</div>
+                </div>
+            </div>`;
+    }).join('');
+
+    // Sparklines for trends
+    const stressValues = history.slice().reverse().map(e => e.scores.stress * 2);
+    const anxValues = history.slice().reverse().map(e => e.scores.anxiety * 2);
+    const depValues = history.slice().reverse().map(e => e.scores.depression * 2);
+
+    const sparkHTML = history.length >= 2 ? `
+        <div class="grid grid-cols-3 gap-3 mb-5 px-4">
+            <div class="rounded-xl border border-slate-100 bg-white p-3 text-center">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">Xu hướng Stress</p>
+                ${renderSparkline(stressValues, '#F43F5E')}
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-white p-3 text-center">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">Xu hướng Lo âu</p>
+                ${renderSparkline(anxValues, '#8B5CF6')}
+            </div>
+            <div class="rounded-xl border border-slate-100 bg-white p-3 text-center">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2">Xu hướng Trầm cảm</p>
+                ${renderSparkline(depValues, '#4F8EC9')}
+            </div>
+        </div>` : '';
+
+    return `
+        <div class="card-lg overflow-hidden">
+            <div class="collapse-header" onclick="toggleCollapse('history')">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+                        <i data-lucide="trending-up" class="h-5 w-5 text-blue-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Theo dõi tiến độ</p>
+                        <h3 class="text-base font-black text-slate-800">Lịch sử khảo sát</h3>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="score-badge hidden sm:inline-flex" style="background:#4F8EC918; color:#4F8EC9;">${history.length} lần</span>
+                    <div class="collapse-icon ${collapseState.history ? 'open' : ''}" id="icon-history">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="collapse-body ${collapseState.history ? 'open' : ''}" id="collapse-history">
+                ${sparkHTML}
+                <div class="history-timeline px-2 pb-2">${items}</div>
+            </div>
+        </div>`;
+}
+
+// ===== RENDER APP =====
 function renderApp() {
     const root = document.getElementById('root');
     let content = '';
@@ -735,11 +1146,13 @@ function renderApp() {
     if (step === 'result') { initDonutChart(); initDassBarChart(); initCommunityCharts(); }
 }
 
-function handleStart() { step = 'quiz'; renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+// ===== NAVIGATION =====
+function handleStart() { step = 'quiz'; collapseState = { mbi: false, dass: false, community: false, history: true }; renderApp(); window.scrollTo({ top: 0 }); }
 function handlePrev() { if (currentIndex > 0) { currentIndex--; renderApp(); } }
 function handleNext() { if (currentIndex < QUESTIONS.length - 1) { currentIndex++; renderApp(); } }
 function handleJump(idx) { currentIndex = idx; renderApp(); }
 function handleAnswer(qId, val) { answers[qId] = val; renderApp(); }
+
 async function handleSubmit() {
     if (Object.keys(answers).length !== QUESTIONS.length) return;
     currentScores = {
@@ -754,92 +1167,79 @@ async function handleSubmit() {
     await loadCommunityStats();
     step = 'result';
     renderApp();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-function handleReset() {
-    answers = {}; currentIndex = 0; step = 'start';
-    renderApp(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0 });
 }
 
+function handleReset() {
+    answers = {}; currentIndex = 0; step = 'start';
+    collapseState = { mbi: false, dass: false, community: false, history: true };
+    renderApp(); window.scrollTo({ top: 0 });
+}
+
+// ===== CHARTS =====
 function initDonutChart() {
     const canvas = document.getElementById('donutChart');
     if (!canvas) return;
+    const exhaustion = currentScores.emotionalExhaustion;
+    const cynicism = currentScores.cynicism;
+    const rawEfficacy = currentScores.academicEfficacy;
+    // lowEfficacy: only count as risk if efficacy is genuinely low (< half of max=36)
+    // If student answered all 0 on efficacy questions, that's actually 0 engagement → not "high risk"
+    // Real burnout risk from efficacy only when they score meaningfully (answered MBI questions)
+    // Safe condition: exhaustion=0 AND cynicism=0 (the two burnout-negative indicators)
+    const isSafe = exhaustion === 0 && cynicism === 0;
+    const lowEfficacy = isSafe ? 0 : Math.max(0, 36 - rawEfficacy);
+    const maxTotal = 90;
+    const riskRaw = exhaustion + cynicism + lowEfficacy;
+    const safeRaw = maxTotal - riskRaw;
+    const riskPct = isSafe ? 0 : Math.round((riskRaw / maxTotal) * 100);
+    const safeColor = '#CBD5E1';
 
-    // --- Tính điểm từng thành phần MBI ---
-    const exhaustion  = currentScores.emotionalExhaustion; // max 30, cao = xấu
-    const cynicism    = currentScores.cynicism;             // max 24, cao = xấu
-    // Mất hiệu quả học tập = max - điểm thực tế (vì efficacy cao = TỐT)
-    const lowEfficacy = 36 - currentScores.academicEfficacy; // max 36, kết quả cao = xấu
-
-    const maxTotal = 30 + 24 + 36; // = 90
-    const riskRaw  = exhaustion + cynicism + lowEfficacy;  // tổng "nguy cơ"
-    const safeRaw  = maxTotal - riskRaw;                   // phần "an toàn" còn lại
-    const riskPct  = Math.round((riskRaw / maxTotal) * 100);
-
-    // Cập nhật số ở giữa
     const el = document.getElementById('donutCenterValue');
     if (el) el.textContent = riskPct + '%';
-
-    // Màu cho trung tâm theo mức độ
     const mbiLvl = getMbiLevelConfig(riskPct);
-    if (el) el.style.color = mbiLvl.hex;
+    if (el) el.style.color = isSafe ? safeColor : mbiLvl.hex;
     const labelEl = document.getElementById('donutCenterLabel');
-    if (labelEl) { labelEl.textContent = mbiLvl.label; labelEl.style.color = mbiLvl.hex; }
+    if (labelEl) { labelEl.textContent = isSafe ? 'An toàn' : mbiLvl.label; labelEl.style.color = isSafe ? safeColor : mbiLvl.hex; }
 
-    // Tỷ lệ % từng thành phần trong phần nguy cơ (để label tooltip)
-    const exhPct  = Math.round((exhaustion  / maxTotal) * 100);
-    const cynPct  = Math.round((cynicism    / maxTotal) * 100);
-    const lowPct  = Math.round((lowEfficacy / maxTotal) * 100);
+    const exhPct = isSafe ? 0 : Math.round((exhaustion / maxTotal) * 100);
+    const cynPct = isSafe ? 0 : Math.round((cynicism / maxTotal) * 100);
+    const lowPct = isSafe ? 0 : Math.round((lowEfficacy / maxTotal) * 100);
     const safePct = 100 - exhPct - cynPct - lowPct;
 
-    // Cập nhật legend tự vẽ
     const legendEl = document.getElementById('donutLegend');
     if (legendEl) {
-        const items = [
-            { color: THEME.primary, label: 'Kiệt quệ cảm xúc', pct: exhPct },
-            { color: '#F59E0B',     label: 'Hoài nghi',          pct: cynPct },
-            { color: '#F43F5E',     label: 'Giảm hiệu quả học tập',    pct: lowPct },
-            { color: '#E2E8F0',     label: 'Tốt',             pct: safePct }
-        ];
-        legendEl.innerHTML = items.map(i =>
-            `<div style="display:flex;align-items:center;gap:6px;">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${i.color};flex-shrink:0;"></span>
-                <span style="flex:1;font-size:10px;">${i.label}</span>
-                <span style="font-size:10px;font-weight:800;color:#64748b;">${i.pct}%</span>
-            </div>`
-        ).join('');
+        if (isSafe) {
+            legendEl.innerHTML = `<div style="display:flex;align-items:center;gap:6px;">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:${safeColor};flex-shrink:0;"></span>
+                <span style="flex:1;font-size:10px;">Không có dấu hiệu kiệt quệ</span>
+                <span style="font-size:10px;font-weight:800;color:#64748b;">100%</span>
+            </div>`;
+        } else {
+            const items = [
+                { color: '#4F8EC9', label: 'Kiệt quệ cảm xúc', pct: exhPct },
+                { color: '#F59E0B', label: 'Hoài nghi', pct: cynPct },
+                { color: '#F43F5E', label: 'Mất hiệu quả HT', pct: lowPct },
+                { color: '#E2E8F0', label: 'An toàn', pct: safePct }
+            ];
+            legendEl.innerHTML = items.map(i =>
+                `<div style="display:flex;align-items:center;gap:6px;">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:${i.color};flex-shrink:0;"></span>
+                    <span style="flex:1;font-size:10px;">${i.label}</span>
+                    <span style="font-size:10px;font-weight:800;color:#64748b;">${i.pct}%</span>
+                </div>`
+            ).join('');
+        }
     }
 
     if (donutChartInstance) donutChartInstance.destroy();
+    const chartData = isSafe
+        ? { labels: ['An toàn'], datasets: [{ data: [1], backgroundColor: [safeColor], borderColor: '#fff', borderWidth: 3, cutout: '70%' }] }
+        : { labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Mất hiệu quả HT', 'An toàn'], datasets: [{ data: [exhaustion, cynicism, lowEfficacy, safeRaw], backgroundColor: ['#4F8EC9', '#F59E0B', '#F43F5E', '#E2E8F0'], borderColor: '#fff', borderWidth: 3, cutout: '70%' }] };
     donutChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
-        data: {
-            labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Giảm hiệu quả học tập', 'Tốt'],
-            datasets: [{
-                data: [exhaustion, cynicism, lowEfficacy, safeRaw],
-                backgroundColor: [THEME.primary, '#F59E0B', '#F43F5E', '#E2E8F0'],
-                borderColor: '#fff',
-                borderWidth: 3,
-                cutout: '70%'
-            }]
-        },
-        options: {
-            responsive: false,
-            maintainAspectRatio: false,
-            animation: { duration: 1000 },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: (ctx) => {
-                            const val = ctx.parsed;
-                            const pct = Math.round((val / maxTotal) * 100);
-                            return ` ${ctx.label}: ${pct}%`;
-                        }
-                    }
-                }
-            }
-        }
+        data: chartData,
+        options: { responsive: false, maintainAspectRatio: false, animation: { duration: 800 }, plugins: { legend: { display: false } } }
     });
 }
 
@@ -848,11 +1248,17 @@ function initDassBarChart() {
     if (!canvas) return;
     const rows = [{ key: 'stress', label: 'Stress' }, { key: 'anxiety', label: 'Lo âu' }, { key: 'depression', label: 'Trầm cảm' }];
     const values = rows.map(r => currentScores[r.key] * 2);
-    const colors = rows.map(r => getLevelConfig(r.key, currentScores[r.key]).hex);
+    const grayColor = '#CBD5E1';
+    // Color bar if score > 0, gray if 0 (no issues detected)
+    const colors = rows.map(r => {
+        const rawScore = currentScores[r.key];
+        if (rawScore === 0) return grayColor;
+        return getLevelConfig(r.key, rawScore).hex;
+    });
     if (dassBarChartInstance) dassBarChartInstance.destroy();
     dassBarChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'bar',
-        data: { labels: rows.map(r => r.label), datasets: [{ data: values, backgroundColor: colors, borderRadius: 8, barThickness: 40 }] },
+        data: { labels: rows.map(r => r.label), datasets: [{ data: values, backgroundColor: colors, borderRadius: 8, barThickness: 44 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 42, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
     });
 }
@@ -863,52 +1269,29 @@ function initCommunityCharts() {
     if (!canvasMbi || !canvasDass) return;
     const div = communityStats.count > 0 ? communityStats.count : 1;
     if (communityMbiChartInstance) communityMbiChartInstance.destroy();
-    // MBI: Exhaustion max=30, Cynicism max=24, Efficacy max=36 → dùng max=36 cho trục Y
-    // Chú ý: Efficacy CAO = TỐT, nên thêm chú giải tránh nhầm
     communityMbiChartInstance = new Chart(canvasMbi.getContext('2d'), {
         type: 'bar',
-        data: { labels: ['Kiệt quệ (↑xấu)', 'Hoài nghi (↑xấu)', 'Hiệu quả HT (↑tốt)'], datasets: [{ data: [(communityStats.emotionalExhaustion / div).toFixed(1), (communityStats.cynicism / div).toFixed(1), (communityStats.academicEfficacy / div).toFixed(1)], backgroundColor: [THEME.primary, '#F59E0B', '#10B981'], borderRadius: 6, barThickness: 24 }] },
+        data: { labels: ['Kiệt quệ', 'Hoài nghi', 'Hiệu quả HT'], datasets: [{ data: [(communityStats.emotionalExhaustion / div).toFixed(1), (communityStats.cynicism / div).toFixed(1), (communityStats.academicEfficacy / div).toFixed(1)], backgroundColor: ['#4F8EC9', '#F59E0B', '#10B981'], borderRadius: 6, barThickness: 24 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 36, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
     });
     if (communityDassChartInstance) communityDassChartInstance.destroy();
-    // DASS: lưu điểm thô nên nhân ×2 khi hiển thị trung bình cộng đồng
     communityDassChartInstance = new Chart(canvasDass.getContext('2d'), {
         type: 'bar',
-        data: { labels: ['Stress', 'Lo âu', 'Trầm cảm'], datasets: [{ data: [(communityStats.stress / div * 2).toFixed(1), (communityStats.anxiety / div * 2).toFixed(1), (communityStats.depression / div * 2).toFixed(1)], backgroundColor: ['#F43F5E', '#8B5CF6', THEME.primary], borderRadius: 6, barThickness: 24 }] },
+        data: { labels: ['Stress', 'Lo âu', 'Trầm cảm'], datasets: [{ data: [(communityStats.stress / div * 2).toFixed(1), (communityStats.anxiety / div * 2).toFixed(1), (communityStats.depression / div * 2).toFixed(1)], backgroundColor: ['#F43F5E', '#8B5CF6', '#4F8EC9'], borderRadius: 6, barThickness: 24 }] },
         options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 42, grid: { borderDash: [4, 4] } }, x: { grid: { display: false }, ticks: { font: { size: 11, weight: 'bold', family: 'Plus Jakarta Sans' } } } }, plugins: { legend: { display: false } } }
     });
 }
 
-// ===== HIỂN THỊ / ẨN MẬT KHẨU =====
-// Quy tắc icon — thể hiện TRẠNG THÁI HIỆN TẠI:
-//   🔒 Mật khẩu đang ẨN  (type="password") => icon MẮT ĐÓNG (eye-off)
-//   👁 Mật khẩu đang HIỆN (type="text")     => icon MẮT MỞ  (eye)
+// ===== PASSWORD TOGGLE =====
 function togglePasswordVisibility() {
     const input = document.getElementById('passwordInput');
     const icon = document.getElementById('pwToggleIcon');
     const btn = document.getElementById('pwToggleBtn');
     if (!input) return;
-
-    const isHidden = input.type === 'password'; // true = đang ẩn mật khẩu
-
-    // Chuyển đổi kiểu input: password <=> text
+    const isHidden = input.type === 'password';
     input.type = isHidden ? 'text' : 'password';
-
-    // Sau khi toggle — cập nhật icon theo trạng thái MỚI:
-    //   isHidden=true  => vừa chuyển sang HIỆN mk => icon MẮT MỞ   (eye)
-    //   isHidden=false => vừa chuyển sang ẨN mk   => icon MẮT ĐÓNG (eye-off)
-    if (icon) {
-        icon.setAttribute('data-lucide', isHidden ? 'eye' : 'eye-off');
-        lucide.createIcons(); // Vẽ lại icon Lucide sau khi đổi data-lucide
-    }
-
-    // Cập nhật aria-label cho trợ năng (accessibility)
-    if (btn) {
-        btn.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu');
-        btn.setAttribute('title', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu');
-    }
-
-    // Giữ con trỏ ở cuối ô input sau khi toggle (giống hành vi Google / Facebook)
+    if (icon) { icon.setAttribute('data-lucide', isHidden ? 'eye' : 'eye-off'); lucide.createIcons(); }
+    if (btn) { btn.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'); }
     const len = input.value.length;
     input.setSelectionRange(len, len);
     input.focus();
