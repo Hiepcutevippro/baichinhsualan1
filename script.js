@@ -1414,12 +1414,12 @@ function renderAdminPage() {
                     <form onsubmit="handleAdminLogin(event)" class="space-y-4">
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email Admin</label>
-                            <input type="email" name="adminEmail" required placeholder="admin@gialoc.edu.vn"
+                            <input type="email" name="adminEmail" required placeholder="nhập gmail admin"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Mat khau</label>
-                            <input type="password" name="adminPassword" required placeholder="••••••••"
+                            <input type="password" name="adminPassword" required placeholder="nhập mật khẩu"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <button type="submit" class="btn-primary w-full" style="border-radius:14px;padding:0.9rem;">
