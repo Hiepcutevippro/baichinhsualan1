@@ -1472,10 +1472,10 @@ function renderAdminPage() {
     }).join('');
 
     const statsCards = [
-        { label: 'Tong luot khao sat', value: total, icon: 'users', color: '#4F8EC9' },
-        { label: 'Can chu y', value: needsAttention, icon: 'alert-triangle', color: '#F43F5E' },
+        { label: 'Tổng lượt khảo sát', value: total, icon: 'users', color: '#4F8EC9' },
+        { label: 'Cần chú ý', value: needsAttention, icon: 'alert-triangle', color: '#F43F5E' },
         { label: 'TB Stress (DASS)', value: avgStress, icon: 'brain', color: '#F59E0B' },
-        { label: 'TB Lo au (DASS)', value: avgAnxiety, icon: 'heart', color: '#8B5CF6' }
+        { label: 'TB Lo âu (DASS)', value: avgAnxiety, icon: 'heart', color: '#8B5CF6' }
     ].map(s => `<div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);padding:1.25rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
             <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;">${s.label}</span>
@@ -1499,14 +1499,14 @@ function renderAdminPage() {
                         <i data-lucide="shield-check" style="width:20px;height:20px;color:#fff;"></i>
                     </div>
                     <div>
-                        <h1 style="font-size:1rem;font-weight:900;color:#1e293b;margin:0;line-height:1.2;">Quan Tri Khao Sat</h1>
+                        <h1 style="font-size:1rem;font-weight:900;color:#1e293b;margin:0;line-height:1.2;">Admin</h1>
                         <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#94a3b8;margin:0;">THPT Gia Loc - Admin</p>
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
-                    <button onclick="loadAdminData()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Lam moi</button>
-                    <button onclick="exportAdminCSV()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#10B981;border-color:#BBF7D0;background:#F0FDF4;"><i data-lucide="download" style="width:13px;height:13px;"></i> Xuat CSV</button>
-                    <button onclick="adminMode=false;renderAdminPage();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#F43F5E;border-color:#FECDD3;background:#FFF1F2;"><i data-lucide="log-out" style="width:13px;height:13px;"></i> Dang xuat</button>
+                    <button onclick="loadAdminData()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Làm mới</button>
+                    <button onclick="exportAdminCSV()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#10B981;border-color:#BBF7D0;background:#F0FDF4;"><i data-lucide="download" style="width:13px;height:13px;"></i> In trang</button>
+                    <button onclick="adminMode=false;renderAdminPage();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#F43F5E;border-color:#FECDD3;background:#FFF1F2;"><i data-lucide="log-out" style="width:13px;height:13px;"></i> Đăng xuất</button>
                     <button onclick="step='auth';renderApp();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Trang HS</button>
                 </div>
             </div>
@@ -1540,22 +1540,22 @@ function renderAdminPage() {
                 ? `<div style="padding:4rem;text-align:center;color:#94a3b8;font-weight:700;font-size:14px;">Khong co du lieu phu hop.</div>`
                 : `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
                         <thead><tr style="background:#F8FAFC;border-bottom:2px solid #E2E8F0;">
-                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Hoc sinh</th>
-                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Thoi gian</th>
+                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Học sinh</th>
+                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Thời gian</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Stress</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo au</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Tram cam</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Burnout</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo âu</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Trầm cảm</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Nguy cơ</th>
                         </tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table></div>`}
             </div>
             <div style="background:#fff;border-radius:16px;border:1px solid rgba(79,142,201,0.1);padding:0.875rem 1.25rem;display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-                <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-right:4px;">Muc do:</span>
-                ${[['Tot', '#10B981'], ['Nhe', '#4F8EC9'], ['Vua', '#F59E0B'], ['Nang', '#F43F5E'], ['Rat nang', '#9F1239']].map(([l, c]) =>
+                <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-right:4px;">Mức độ:</span>
+                ${[['Tốt', '#10B981'], ['Nhẹ', '#4F8EC9'], ['Vừa', '#F59E0B'], ['Nặng', '#F43F5E'], ['Rất nặng', '#9F1239']].map(([l, c]) =>
                     `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;background:${c}18;color:${c};">${l}</span>`
                 ).join('')}
-                <span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:4px;">Vang = can chu y | Xanh = on</span>
+                <span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:4px;">Vàng = cần chú ý | Xanh = tốt</span>
             </div>
         </main>
     </div>`;
