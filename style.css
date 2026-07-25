@@ -1,70 +1,35 @@
 /* ============================================================
    style.css — Khảo Sát Sức Khỏe Tâm Lý — THPT Gia Lộc
-   Toàn bộ chú thích bằng tiếng Việt
+   PHIÊN BẢN MỚI: Giao diện hiện đại, thẻ rút gọn, lịch sử
    ============================================================ */
 
-/* ----- IMPORT FONT ----- */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
-/* ----- BIẾN MÀU GỐC (CSS VARIABLES) ----- */
 :root {
     --font-primary: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-
-    /* ===== MÀU THƯƠNG HIỆU ===== */
-    /* Màu xanh lam nhạt chủ đạo — dùng cho nút đăng nhập, nút bắt đầu, thanh tiến độ */
-    --brand-blue: #6BA4CC;
-
-    /* Màu xanh bạc hà — dùng làm gradient kết hợp với --brand-blue */
-    --brand-mint: #85D3C1;
-
-    /* Màu xanh đen đậm — dùng cho tiêu đề, text nổi bật */
-    --brand-dark: #0000002e;
-
-    /* Màu nền tổng thể của toàn bộ trang */
-    --brand-surface: #ffffff;
-
-    /* ===== MÀU BẢNG CÂU HỎI (NAVIGATION GRID) ===== */
-    /* Màu nền khung chứa các nút câu hỏi — xanh da trời nhạt */
-    --nav-box-bg: #80d8d8;
-
-    /* Màu viền của khung chứa — xanh da trời vừa */
-    --nav-box-border: #93C5FD;
-
-    /* Màu nút câu hỏi MẶC ĐỊNH (chưa trả lời) — nền trong suốt */
+    --brand-blue: #4F8EC9;
+    --brand-blue-light: #7BB3E0;
+    --brand-mint: #42C8A8;
+    --brand-mint-light: #85D3C1;
+    --brand-dark: #0D3348;
+    --brand-surface: #F0F7FF;
+    --nav-box-bg: #daeeff;
+    --nav-box-border: #89b9f0;
     --nav-btn-default-bg: transparent;
-
-    /* Màu chữ số nút MẶC ĐỊNH — xanh da trời đậm */
-    --nav-btn-default-color: #000000;
-
-    /* Màu viền nút MẶC ĐỊNH */
-    --nav-btn-default-border: #BFDBFE;
-
-    /* Màu nút ĐÃ TRẢ LỜI — nền xanh da trời vừa */
-    --nav-btn-answered-bg: #cfddee;
-
-    /* Màu chữ số nút ĐÃ TRẢ LỜI */
-    --nav-btn-answered-color: #ff0000;
-
-    /* Màu viền nút ĐÃ TRẢ LỜI */
+    --nav-btn-default-color: #334155;
+    --nav-btn-default-border: #B8D4EE;
+    --nav-btn-answered-bg: #DBEAFE;
+    --nav-btn-answered-color: #1D4ED8;
     --nav-btn-answered-border: #93C5FD;
-
-    /* Màu nút ĐANG CHỌN — xanh da trời đậm nổi bật */
     --nav-btn-active-bg: #2563EB;
-
-    /* Màu chữ số nút ĐANG CHỌN — trắng */
     --nav-btn-active-color: #FFFFFF;
-
-    /* Màu viền nút ĐANG CHỌN */
-    --nav-btn-active-border: #0044ff;
-
-    /* ===== MÀU THANH CUỘN ===== */
-    --scrollbar-track: #F4F9F9;
-    /* Màu nền của thanh cuộn */
-    --scrollbar-thumb: #85D3C1;
-    /* Màu của tay cầm thanh cuộn */
+    --nav-btn-active-border: #1D4ED8;
+    --scrollbar-track: #F0F7FF;
+    --scrollbar-thumb: #42C8A8;
+    --card-shadow: 0 4px 24px rgba(79, 142, 201, 0.10);
+    --card-shadow-hover: 0 8px 32px rgba(79, 142, 201, 0.18);
 }
 
-/* ----- RESET CƠ BẢN ----- */
 *,
 *::before,
 *::after {
@@ -82,134 +47,246 @@ body {
     overflow-x: hidden;
     margin: 0;
     min-height: 100vh;
-}
-
-/* ----- TIỆN ÍCH MÀU THƯƠNG HIỆU ----- */
-.brand-gradient {
-    /* Gradient ngang từ xanh lam nhạt sang xanh bạc hà */
-    background-image: linear-gradient(90deg, var(--brand-blue), var(--brand-mint));
-}
-
-.bg-brand-surface {
     background: var(--brand-surface);
 }
 
-.bg-brand-blue {
-    background: var(--brand-blue);
+/* ===== GRADIENTS ===== */
+.brand-gradient {
+    background-image: linear-gradient(135deg, var(--brand-blue), var(--brand-mint));
 }
 
-.bg-brand-mint {
-    background: var(--brand-mint);
+.brand-gradient-text {
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-mint));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-.text-brand-blue {
-    color: var(--brand-blue);
+/* ===== HEADER ===== */
+.site-header {
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(79, 142, 201, 0.12);
+    box-shadow: 0 2px 16px rgba(79, 142, 201, 0.07);
 }
 
-.text-brand-dark {
-    color: var(--brand-dark);
-}
-
-/* ============================================================
-   BẢNG ĐIỀU HƯỚNG CÂU HỎI (NAVIGATION GRID)
-   — 42 câu chia thành 2 dòng, mỗi dòng 21 cột
-   — Màu sắc: xanh da trời (sky blue / Tailwind blue)
-   ============================================================ */
-
-/* Lưới điều hướng câu hỏi — 21 cột trên desktop (=> 42 câu = 2 dòng) */
+/* ===== NAV GRID ===== */
 .nav-grid {
     display: grid;
     grid-template-columns: repeat(21, minmax(0, 1fr));
-    gap: 0.4rem;
-    /* Khoảng cách giữa các nút */
+    gap: 0.35rem;
 }
 
-/* Responsive — màn hình vừa (tablet): thu về 14 cột (=> 42 câu = 3 dòng) */
 @media (max-width: 1024px) {
     .nav-grid {
         grid-template-columns: repeat(14, minmax(0, 1fr));
     }
 }
 
-/* Responsive — màn hình nhỏ (điện thoại): thu về 7 cột (=> 42 câu = 6 dòng) */
 @media (max-width: 768px) {
     .nav-grid {
         grid-template-columns: repeat(7, minmax(0, 1fr));
     }
 }
 
-/* ===== KHUNG CHỨA BẢNG CÂU HỎI =====
-   ĐỂ THAY MÀU KHUNG: chỉnh --nav-box-bg và --nav-box-border trong :root bên trên */
 .nav-box {
     position: relative;
     z-index: 10;
-    border: 2px solid var(--nav-box-border);
-    /* Viền xanh da trời */
+    border: 1.5px solid var(--nav-box-border);
     background: var(--nav-box-bg);
-    /* Nền xanh da trời rất nhạt */
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 0.5rem;
 }
 
-/* ===== NÚT CÂU HỎI — CƠ BẢN =====
-   Lớp nền dùng chung cho tất cả các trạng thái */
 .nav-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     height: 2rem;
-    /* Chiều cao nút — có thể tăng lên 2.25rem nếu muốn to hơn */
-    border-radius: 0.5rem;
-    font-size: 0.7rem;
-    /* Cỡ chữ số bên trong nút */
+    border-radius: 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
     position: relative;
     z-index: 20;
-    transition: all 0.15s ease;
+    transition: all 0.12s ease;
     cursor: pointer;
     border: 1px solid var(--nav-btn-default-border);
 }
 
-/* ===== TRẠNG THÁI 1: CÂU HỎI CHƯA TRẢ LỜI (MẶC ĐỊNH) =====
-   ĐỂ THAY MÀU: chỉnh --nav-btn-default-* trong :root */
 .nav-btn-default {
     background: var(--nav-btn-default-bg);
     color: var(--nav-btn-default-color);
     border-color: var(--nav-btn-default-border);
 }
 
-/* ===== TRẠNG THÁI 2: CÂU HỎI ĐÃ TRẢ LỜI =====
-   ĐỂ THAY MÀU: chỉnh --nav-btn-answered-* trong :root */
 .nav-btn-answered {
     background: var(--nav-btn-answered-bg);
     color: var(--nav-btn-answered-color);
     border-color: var(--nav-btn-answered-border);
-    font-weight: 600;
+    font-weight: 700;
 }
 
-/* ===== TRẠNG THÁI 3: CÂU HỎI ĐANG CHỌN (NỔI BẬT NHẤT) =====
-   ĐỂ THAY MÀU: chỉnh --nav-btn-active-* trong :root */
 .nav-btn-active {
     background: var(--nav-btn-active-bg);
     color: var(--nav-btn-active-color);
     border-color: var(--nav-btn-active-border);
-    font-weight: 700;
+    font-weight: 800;
     box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
-    /* Đổ bóng xanh nhẹ */
 }
 
-/* Responsive — thu nhỏ padding khung trên điện thoại */
 @media (max-width: 768px) {
     .nav-box {
-        padding: 0.35rem;
+        padding: 0.3rem;
     }
 
     .nav-btn {
-        height: 1.75rem;
-        font-size: 0.65rem;
+        height: 1.6rem;
+        font-size: 0.6rem;
     }
 }
 
-/* ----- THANH CUỘN TÙY CHỈNH ----- */
+/* ===== CARDS ===== */
+.card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(79, 142, 201, 0.10);
+    overflow: hidden;
+}
+
+.card-lg {
+    background: #fff;
+    border-radius: 28px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid rgba(79, 142, 201, 0.10);
+}
+
+/* ===== COLLAPSIBLE CARDS ===== */
+.collapse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 1.25rem 1.5rem;
+    border-radius: 20px;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.collapse-header:hover {
+    background: rgba(79, 142, 201, 0.04);
+}
+
+.collapse-icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(79, 142, 201, 0.10);
+    color: var(--brand-blue);
+    transition: transform 0.25s ease, background 0.15s;
+    flex-shrink: 0;
+}
+
+.collapse-icon.open {
+    transform: rotate(180deg);
+    background: var(--brand-blue);
+    color: #fff;
+}
+
+.collapse-body {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s;
+    padding: 0 1.5rem;
+}
+
+.collapse-body.open {
+    max-height: 2000px;
+    padding: 0 1.5rem 1.5rem;
+}
+
+/* ===== HISTORY TIMELINE ===== */
+.history-timeline {
+    position: relative;
+}
+
+.history-timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--brand-blue), var(--brand-mint));
+    border-radius: 2px;
+}
+
+.history-item {
+    position: relative;
+    padding-left: 52px;
+    padding-bottom: 1.25rem;
+}
+
+.history-item:last-child {
+    padding-bottom: 0;
+}
+
+.history-dot {
+    position: absolute;
+    left: 12px;
+    top: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px var(--brand-blue);
+}
+
+.history-card {
+    background: #fff;
+    border: 1px solid rgba(79, 142, 201, 0.12);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 2px 12px rgba(79, 142, 201, 0.07);
+    transition: box-shadow 0.15s;
+}
+
+.history-card:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+/* Trend chips */
+.trend-up {
+    color: #F43F5E;
+}
+
+.trend-down {
+    color: #10B981;
+}
+
+.trend-same {
+    color: #94A3B8;
+}
+
+/* ===== GAUGE BARS ===== */
+.gauge-track {
+    height: 10px;
+    border-radius: 99px;
+    overflow: hidden;
+    background: linear-gradient(90deg, #10B981 0%, #10B981 33%, #F59E0B 33%, #F59E0B 66%, #F43F5E 66%, #F43F5E 100%);
+}
+
+/* ===== MINI SPARKLINE (inline SVG trend) ===== */
+.sparkline {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -217,28 +294,24 @@ body {
 
 ::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
-    /* Màu nền thanh cuộn */
 }
 
 ::-webkit-scrollbar-thumb {
     background: var(--scrollbar-thumb);
-    /* Màu tay cầm thanh cuộn */
     border-radius: 10px;
 }
 
-/* ----- TAB ĐĂNG NHẬP / ĐĂNG KÝ ----- */
+/* ===== AUTH ===== */
 .auth-tab {
     position: relative;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: color 0.2s;
 }
 
-/* Màu tab đang được chọn */
 .auth-tab.active {
     color: var(--brand-blue);
 }
 
-/* Gạch chân dưới tab đang chọn */
 .auth-tab.active::after {
     content: '';
     position: absolute;
@@ -250,22 +323,17 @@ body {
     border-radius: 2px;
 }
 
-/* ----- Ô INPUT MẬT KHẨU CÓ NÚT HIỂN THỊ ----- */
-/* Khung bọc ô input + nút con mắt */
 .password-wrapper {
     position: relative;
     display: flex;
     align-items: center;
 }
 
-/* Ô input mật khẩu bên trong khung bọc */
 .password-wrapper input {
     width: 100%;
     padding-right: 3rem;
-    /* Dành chỗ cho nút con mắt bên phải */
 }
 
-/* Nút con mắt hiển thị/ẩn mật khẩu */
 .password-toggle-btn {
     position: absolute;
     right: 0.75rem;
@@ -276,26 +344,18 @@ body {
     cursor: pointer;
     padding: 0.25rem;
     color: #94a3b8;
-    /* Màu icon mặc định — xám */
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: color 0.2s ease;
+    transition: color 0.2s;
     border-radius: 4px;
 }
 
-/* Hover: icon chuyển sang màu xanh thương hiệu */
 .password-toggle-btn:hover {
     color: var(--brand-blue);
 }
 
-/* Focus visible cho accessibility */
-.password-toggle-btn:focus-visible {
-    outline: 2px solid var(--brand-blue);
-    outline-offset: 2px;
-}
-
-/* ----- BIỂU ĐỒ (CHARTS) ----- */
+/* ===== CHART WRAPPERS ===== */
 .chart-wrap {
     position: relative;
     width: 100%;
@@ -312,71 +372,9 @@ body {
     height: 100%;
 }
 
-/* Wrapper biểu đồ donut — dùng position:relative để overlay số ở giữa bằng inline style */
-/* Các style .donut-center và #donutCenterValue đã chuyển sang inline style trong HTML */
-
-
-/* ----- LAYOUT TRANG ----- */
-.result-page {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100vh - 80px);
-    padding: 1rem;
-    background: #F4F9F9;
-}
-
-.quiz-page {
-    background: linear-gradient(180deg, #F4F9F9 0%, #FFFFFF 100%);
-}
-
-/* ============================================================
-   VÔ HIỆU HÓA TOÀN BỘ HIỆU ỨNG RUNG / GIẬT MÀN HÌNH
-   Xóa block này nếu muốn bật lại animation trong tương lai
-   ============================================================ */
-
-/* Tắt các class rung/lắc cụ thể */
-.shake,
-.rung,
-.vibrate,
-.wiggle,
-.animate-shake,
-.shake-x,
-.shake-y {
-    animation: none !important;
-    transition: none !important;
-    transform: none !important;
-}
-
-/* Tắt các class animate-* của Tailwind */
-.animate-fade-in,
-.animate-slide-up {
-    animation: none !important;
-}
-
-/* Tắt animation trên mọi phần tử TRỪ canvas (canvas cần cho Chart.js render biểu đồ) */
-/* — block này được ghi đè bởi *:not(canvas) bên dưới — */
-
-/* ============================================================
-   VÔ HIỆU HÓA HIỆU ỨNG RUNG / GIẬT MÀN HÌNH — PHIÊN BẢN SỬA
-   Lưu ý: KHÔNG áp dụng cho <canvas> để Chart.js hoạt động bình thường
-   ============================================================ */
-
-/* Ghi đè lại block cũ: tắt animation TRỪ canvas */
-*:not(canvas):not(canvas *) {
-    animation-duration: 0s !important;
-    animation-delay: 0s !important;
-    transition-duration: 0s !important;
-}
-
-/* ============================================================
-   FIX LAYOUT TRANG KẾT QUẢ — hiển thị 1 cột dọc, cuộn mượt
-   ============================================================ */
-
-/* Chart.js canvas: đặt chiều cao cố định để không bị thu nhỏ về 0 */
 #dassBarChart {
-    min-height: 220px !important;
-    height: 220px !important;
+    min-height: 180px !important;
+    height: 180px !important;
 }
 
 #donutChart {
@@ -387,11 +385,10 @@ body {
 
 #communityMbiChart,
 #communityDassChart {
-    min-height: 180px !important;
-    height: 180px !important;
+    min-height: 160px !important;
+    height: 160px !important;
 }
 
-/* Wrapper chart: đảm bảo có chiều cao thực, không bị collapse */
 .chart-wrap {
     position: relative !important;
     display: block !important;
@@ -404,7 +401,128 @@ body {
     max-width: 100% !important;
 }
 
-/* Đảm bảo các card kết quả không bị tràn ngang */
+/* ===== RESULT PAGE ===== */
+.result-page {
+    background: var(--brand-surface);
+}
+
+.quiz-page {
+    background: linear-gradient(180deg, #F0F7FF 0%, #FFFFFF 100%);
+}
+
+/* ===== BUTTON ===== */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-mint));
+    color: #fff;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 0.85rem 2rem;
+    box-shadow: 0 4px 16px rgba(79, 142, 201, 0.30);
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-primary);
+    transition: box-shadow 0.2s, transform 0.1s;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 8px 24px rgba(79, 142, 201, 0.40);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(79, 142, 201, 0.08);
+    color: var(--brand-blue);
+    font-weight: 700;
+    border-radius: 12px;
+    padding: 0.65rem 1.25rem;
+    border: 1px solid rgba(79, 142, 201, 0.20);
+    cursor: pointer;
+    font-family: var(--font-primary);
+    transition: background 0.15s;
+}
+
+.btn-ghost:hover {
+    background: rgba(79, 142, 201, 0.14);
+}
+
+/* ===== ANIMATIONS off except canvas ===== */
+*:not(canvas):not(canvas *) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+}
+
+/* Re-enable collapse body transition */
+.collapse-body {
+    transition-duration: 0.35s !important;
+}
+
+.collapse-icon {
+    transition-duration: 0.25s !important;
+}
+
+/* ===== SCORE BADGE ===== */
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+/* ===== REMEMBER ME ===== */
+.checkbox-custom {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #CBD5E1;
+    border-radius: 5px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #fff;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.checkbox-custom:checked {
+    background: var(--brand-blue);
+    border-color: var(--brand-blue);
+}
+
+.checkbox-custom:checked::after {
+    content: '✓';
+    display: block;
+    text-align: center;
+    color: #fff;
+    font-size: 11px;
+    line-height: 14px;
+    font-weight: 900;
+}
+
+/* ===== BACKGROUND DECORATION ===== */
+.auth-bg {
+    background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(79, 142, 201, 0.10) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(66, 200, 168, 0.10) 0%, transparent 60%),
+        #F0F7FF;
+}
+
 main section>div {
     width: 100%;
     box-sizing: border-box;
