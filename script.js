@@ -1297,4 +1297,269 @@ function togglePasswordVisibility() {
     input.focus();
 }
 
+// ===== ADMIN CONFIG =====
+const ADMIN_CREDENTIALS = { email: 'admin@gialoc.edu.vn', password: 'GiaLoc@Admin2025' };
+let adminMode = false;
+let adminData = [];
+let adminLoading = false;
+let adminSearch = '';
+let adminFilter = 'all';
+let adminSort = 'date_desc';
+
+function handleAdminLogin(e) {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const email = fd.get('adminEmail').trim();
+    const password = fd.get('adminPassword');
+    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
+        adminMode = true;
+        loadAdminData();
+    } else {
+        const errEl = document.getElementById('adminLoginError');
+        if (errEl) { errEl.textContent = 'Sai thông tin đăng nhập!'; errEl.style.display = 'block'; }
+    }
+}
+
+async function loadAdminData() {
+    adminLoading = true;
+    renderAdminPage();
+    if (supabaseReady) {
+        try {
+            const { data, error } = await db.from('survey_results').select('*').order('created_at', { ascending: false });
+            if (!error && data) adminData = data;
+        } catch (err) { console.error('Admin load error:', err); }
+    } else {
+        adminData = [];
+        const users = JSON.parse(localStorage.getItem('mental_health_users') || '[]');
+        users.forEach(u => {
+            const hist = getUserHistory(u.email);
+            hist.forEach(h => {
+                adminData.push({
+                    user_name: u.name || u.email,
+                    created_at: h.date,
+                    stress: h.scores.stress, anxiety: h.scores.anxiety, depression: h.scores.depression,
+                    emotional_exhaustion: h.scores.emotionalExhaustion,
+                    cynicism: h.scores.cynicism, academic_efficacy: h.scores.academicEfficacy
+                });
+            });
+        });
+        adminData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+    adminLoading = false;
+    renderAdminPage();
+}
+
+function getAdminFilteredData() {
+    let data = [...adminData];
+    if (adminSearch) {
+        const q = adminSearch.toLowerCase();
+        data = data.filter(r => (r.user_name || '').toLowerCase().includes(q));
+    }
+    if (adminFilter !== 'all') {
+        data = data.filter(r => {
+            if (adminFilter === 'stress') return getLevelConfig('stress', r.stress || 0).label !== 'Tot';
+            if (adminFilter === 'anxiety') return getLevelConfig('anxiety', r.anxiety || 0).label !== 'Tot';
+            if (adminFilter === 'depression') return getLevelConfig('depression', r.depression || 0).label !== 'Tot';
+            if (adminFilter === 'burnout') return getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 }) >= 25;
+            return true;
+        });
+    }
+    if (adminSort === 'date_desc') data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    else if (adminSort === 'date_asc') data.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    else if (adminSort === 'stress') data.sort((a, b) => (b.stress || 0) - (a.stress || 0));
+    else if (adminSort === 'burnout') data.sort((a, b) =>
+        getMbiRiskPct({ emotionalExhaustion: b.emotional_exhaustion || 0, cynicism: b.cynicism || 0, academicEfficacy: b.academic_efficacy || 0 }) -
+        getMbiRiskPct({ emotionalExhaustion: a.emotional_exhaustion || 0, cynicism: a.cynicism || 0, academicEfficacy: a.academic_efficacy || 0 })
+    );
+    return data;
+}
+
+function exportAdminCSV() {
+    const data = getAdminFilteredData();
+    const headers = ['Ten', 'Ngay', 'Stress', 'Lo au', 'Tram cam', 'Muc Stress', 'Muc Lo au', 'Muc Tram cam', 'Kiet que CX', 'Hoai nghi', 'Hieu qua HT', 'Burnout%'];
+    const rows = data.map(r => {
+        const mbi = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
+        return [
+            '"' + (r.user_name || 'An danh').replace(/"/g, '') + '"',
+            r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
+            (r.stress || 0) * 2, (r.anxiety || 0) * 2, (r.depression || 0) * 2,
+            getLevelConfig('stress', r.stress || 0).label,
+            getLevelConfig('anxiety', r.anxiety || 0).label,
+            getLevelConfig('depression', r.depression || 0).label,
+            r.emotional_exhaustion || 0, r.cynicism || 0, r.academic_efficacy || 0, mbi + '%'
+        ].join(',');
+    });
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'ket_qua_khao_sat_gia_loc.csv'; a.click();
+    URL.revokeObjectURL(url);
+}
+
+function renderAdminPage() {
+    const root = document.getElementById('root');
+    if (!adminMode) {
+        root.innerHTML = `
+        <div class="min-h-screen flex items-center justify-center px-4 py-10 auth-bg">
+            <div class="w-full max-w-sm">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-lg mb-4" style="background:linear-gradient(135deg,#0D3348,#1e5a7a);">
+                        <i data-lucide="shield-check" style="width:28px;height:28px;color:#fff;"></i>
+                    </div>
+                    <h1 class="text-2xl font-black text-slate-800">Trang Quan Tri</h1>
+                    <p class="text-sm text-slate-500 font-semibold mt-1">THPT Gia Loc - Admin Portal</p>
+                </div>
+                <div class="card-lg p-7">
+                    <div id="adminLoginError" style="display:none;margin-bottom:1rem;padding:0.75rem;border-radius:12px;background:#FFF1F2;border:1px solid #FECDD3;color:#BE123C;font-size:13px;font-weight:700;"></div>
+                    <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email Admin</label>
+                            <input type="email" name="adminEmail" required placeholder="admin@gialoc.edu.vn"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Mat khau</label>
+                            <input type="password" name="adminPassword" required placeholder="••••••••"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                        </div>
+                        <button type="submit" class="btn-primary w-full" style="border-radius:14px;padding:0.9rem;">
+                            Dang nhap Admin
+                        </button>
+                    </form>
+                    <button onclick="step='auth';renderApp();" class="w-full mt-3 text-xs font-bold text-slate-400 hover:text-slate-600 py-2">
+                        Quay ve trang hoc sinh
+                    </button>
+                </div>
+            </div>
+        </div>`;
+        lucide.createIcons(); return;
+    }
+
+    const filtered = getAdminFilteredData();
+    const total = adminData.length;
+    const needsAttention = adminData.filter(r => {
+        const sOk = getLevelConfig('stress', r.stress || 0).label === 'Tot';
+        const aOk = getLevelConfig('anxiety', r.anxiety || 0).label === 'Tot';
+        const dOk = getLevelConfig('depression', r.depression || 0).label === 'Tot';
+        const bOk = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 }) < 25;
+        return !sOk || !aOk || !dOk || !bOk;
+    }).length;
+    const avgStress = total > 0 ? (adminData.reduce((s, r) => s + (r.stress || 0) * 2, 0) / total).toFixed(1) : '--';
+    const avgAnxiety = total > 0 ? (adminData.reduce((s, r) => s + (r.anxiety || 0) * 2, 0) / total).toFixed(1) : '--';
+
+    const mkBadge = (label, hex) => `<span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:${hex}18;color:${hex};">${label}</span>`;
+
+    const tableRows = filtered.map(r => {
+        const d = r.created_at ? new Date(r.created_at) : null;
+        const dateStr = d ? d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '--';
+        const timeStr = d ? d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '';
+        const sL = getLevelConfig('stress', r.stress || 0);
+        const aL = getLevelConfig('anxiety', r.anxiety || 0);
+        const dL = getLevelConfig('depression', r.depression || 0);
+        const mbiPct = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
+        const mbiLvl = getMbiLevelConfig(mbiPct);
+        const isAlert = sL.label !== 'Tot' || aL.label !== 'Tot' || dL.label !== 'Tot' || mbiPct >= 25;
+        return `<tr style="border-bottom:1px solid #F1F5F9;background:${isAlert ? '#FFFBEB' : '#fff'};">
+            <td style="padding:10px 16px;font-size:12px;font-weight:700;color:#1e293b;white-space:nowrap;">
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isAlert ? '#F43F5E' : '#10B981'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>${r.user_name || 'An danh'}
+            </td>
+            <td style="padding:10px 16px;font-size:11px;color:#64748b;white-space:nowrap;">${dateStr}<br><span style="font-size:10px;color:#94a3b8;">${timeStr}</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(sL.label, sL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.stress || 0) * 2}/42</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(aL.label, aL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.anxiety || 0) * 2}/42</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(dL.label, dL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.depression || 0) * 2}/42</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiPct + '%', mbiLvl.hex)}</td>
+        </tr>`;
+    }).join('');
+
+    const statsCards = [
+        { label: 'Tong luot khao sat', value: total, icon: 'users', color: '#4F8EC9' },
+        { label: 'Can chu y', value: needsAttention, icon: 'alert-triangle', color: '#F43F5E' },
+        { label: 'TB Stress (DASS)', value: avgStress, icon: 'brain', color: '#F59E0B' },
+        { label: 'TB Lo au (DASS)', value: avgAnxiety, icon: 'heart', color: '#8B5CF6' }
+    ].map(s => `<div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);padding:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+            <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;">${s.label}</span>
+            <div style="width:32px;height:32px;border-radius:10px;background:${s.color}18;display:flex;align-items:center;justify-content:center;">
+                <i data-lucide="${s.icon}" style="width:16px;height:16px;color:${s.color};"></i>
+            </div>
+        </div>
+        <p style="font-size:2rem;font-weight:900;color:${s.color};line-height:1;">${s.value}</p>
+    </div>`).join('');
+
+    const filterBtns = [['all', 'Tat ca'], ['stress', 'Stress'], ['anxiety', 'Lo au'], ['depression', 'Tram cam'], ['burnout', 'Burnout']].map(([v, l]) =>
+        `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#64748b'};cursor:pointer;font-family:inherit;">${l}</button>`
+    ).join('');
+
+    root.innerHTML = `
+    <div class="min-h-screen" style="background:#F0F7FF;">
+        <header style="background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border-bottom:1px solid rgba(79,142,201,0.12);box-shadow:0 2px 16px rgba(79,142,201,0.07);position:sticky;top:0;z-index:40;">
+            <div style="max-width:1280px;margin:0 auto;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0D3348,#1e5a7a);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i data-lucide="shield-check" style="width:20px;height:20px;color:#fff;"></i>
+                    </div>
+                    <div>
+                        <h1 style="font-size:1rem;font-weight:900;color:#1e293b;margin:0;line-height:1.2;">Quan Tri Khao Sat</h1>
+                        <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#94a3b8;margin:0;">THPT Gia Loc - Admin</p>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <button onclick="loadAdminData()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Lam moi</button>
+                    <button onclick="exportAdminCSV()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#10B981;border-color:#BBF7D0;background:#F0FDF4;"><i data-lucide="download" style="width:13px;height:13px;"></i> Xuat CSV</button>
+                    <button onclick="adminMode=false;renderAdminPage();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#F43F5E;border-color:#FECDD3;background:#FFF1F2;"><i data-lucide="log-out" style="width:13px;height:13px;"></i> Dang xuat</button>
+                    <button onclick="step='auth';renderApp();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Trang HS</button>
+                </div>
+            </div>
+        </header>
+        <main style="max-width:1280px;margin:0 auto;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:1.25rem;">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1rem;">
+                ${statsCards}
+            </div>
+            <div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);padding:1.25rem;">
+                <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;">
+                    <div style="position:relative;flex:1;min-width:160px;">
+                        <input type="text" placeholder="Tim theo ten hoc sinh..." value="${adminSearch}"
+                            oninput="adminSearch=this.value;renderAdminPage();"
+                            style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:13px;font-family:inherit;outline:none;background:#F8FAFC;color:#1e293b;box-sizing:border-box;">
+                    </div>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">${filterBtns}</div>
+                    <select onchange="adminSort=this.value;renderAdminPage();"
+                        style="padding:0.5rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:12px;font-weight:700;font-family:inherit;background:#F8FAFC;color:#475569;outline:none;cursor:pointer;">
+                        <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Moi nhat truoc</option>
+                        <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cu nhat truoc</option>
+                        <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhat</option>
+                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Burnout cao nhat</option>
+                    </select>
+                </div>
+                <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hien thi ${filtered.length} / ${total} ket qua ${adminFilter !== 'all' ? '(da loc)' : ''}</p>
+            </div>
+            <div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);overflow:hidden;">
+                ${adminLoading
+            ? `<div style="padding:4rem;text-align:center;"><p style="color:#94a3b8;font-weight:700;font-size:13px;">Dang tai du lieu...</p></div>`
+            : filtered.length === 0
+                ? `<div style="padding:4rem;text-align:center;color:#94a3b8;font-weight:700;font-size:14px;">Khong co du lieu phu hop.</div>`
+                : `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
+                        <thead><tr style="background:#F8FAFC;border-bottom:2px solid #E2E8F0;">
+                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Hoc sinh</th>
+                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Thoi gian</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Stress</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo au</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Tram cam</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Burnout</th>
+                        </tr></thead>
+                        <tbody>${tableRows}</tbody>
+                    </table></div>`}
+            </div>
+            <div style="background:#fff;border-radius:16px;border:1px solid rgba(79,142,201,0.1);padding:0.875rem 1.25rem;display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-right:4px;">Muc do:</span>
+                ${[['Tot', '#10B981'], ['Nhe', '#4F8EC9'], ['Vua', '#F59E0B'], ['Nang', '#F43F5E'], ['Rat nang', '#9F1239']].map(([l, c]) =>
+                    `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;background:${c}18;color:${c};">${l}</span>`
+                ).join('')}
+                <span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:4px;">Vang = can chu y | Xanh = on</span>
+            </div>
+        </main>
+    </div>`;
+    lucide.createIcons();
+}
+
 renderApp();
