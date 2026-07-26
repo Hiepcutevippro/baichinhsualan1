@@ -108,6 +108,7 @@ let authLoading = false;
 let authError = '';
 let authSuccess = '';
 let collapseState = { mbi: false, dass: false, community: false, history: true };
+let lastSaveOk = true; // false nếu lần lưu kết quả gần nhất lên Cloud bị lỗi
 
 // ===== SAVED CREDENTIALS (Remember Me) =====
 function getSavedCredentials() {
@@ -354,10 +355,16 @@ async function saveResult(scores) {
         emotional_exhaustion: scores.emotionalExhaustion,
         cynicism: scores.cynicism, academic_efficacy: scores.academicEfficacy
     };
+    lastSaveOk = true;
     if (supabaseReady) {
         if (currentUser?.id) record.user_id = currentUser.id;
-        const { error } = await db.from('survey_results').insert([record]);
-        if (error) console.error('Lỗi lưu Supabase:', error.message);
+        try {
+            const { error } = await db.from('survey_results').insert([record]);
+            if (error) { console.error('Lỗi lưu Supabase:', error.message); lastSaveOk = false; }
+        } catch (err) {
+            console.error('Lỗi lưu Supabase:', err.message);
+            lastSaveOk = false;
+        }
     }
     // Always save to localStorage history
     if (currentUser && !currentUser.isIncognito && currentUser.email) {
@@ -397,13 +404,13 @@ function getLevelConfig(scale, rawScore) {
     let label = 'Tốt';
     if (scale === 'stress') {
         if (score >= 34) label = 'Rất nặng'; else if (score >= 26) label = 'Nặng';
-        else if (score >= 20) label = 'Vừa'; else if (score >= 16) label = 'Nhẹ';
+        else if (score >= 19) label = 'Vừa'; else if (score >= 15) label = 'Nhẹ';
     } else if (scale === 'depression') {
-        if (score >= 28) label = 'Rất nặng'; else if (score >= 22) label = 'Nặng';
+        if (score >= 28) label = 'Rất nặng'; else if (score >= 21) label = 'Nặng';
         else if (score >= 14) label = 'Vừa'; else if (score >= 10) label = 'Nhẹ';
     } else if (scale === 'anxiety') {
-        if (score >= 20) label = 'Rất nặng'; else if (score >= 16) label = 'Nặng';
-        else if (score >= 12) label = 'Vừa'; else if (score >= 8) label = 'Nhẹ';
+        if (score >= 20) label = 'Rất nặng'; else if (score >= 15) label = 'Nặng';
+        else if (score >= 10) label = 'Vừa'; else if (score >= 8) label = 'Nhẹ';
     }
     if (label === 'Tốt') return { label, className: 'border-emerald-200 bg-emerald-50 text-emerald-800', dot: 'bg-emerald-500', hex: '#10B981', icon: 'smile' };
     if (label === 'Nhẹ') return { label, className: 'border-sky-200 bg-sky-50 text-sky-800', dot: 'bg-sky-500', hex: '#0ea8f0', icon: 'meh' };
@@ -423,6 +430,9 @@ function getAdvice(label) {
 
 const SEVERITY_LEVELS = ['Tốt', 'Nhẹ', 'Vừa', 'Nặng', 'Rất nặng'];
 const severityRank = (label) => SEVERITY_LEVELS.indexOf(label);
+// Dùng chung cho toàn bộ trang Admin: chỉ tính "Cần chú ý" từ mức "Nặng" trở lên
+// (Nhẹ và Vừa được xem là bình thường, không đưa vào cảnh báo)
+const isAttentionLevel = (label) => severityRank(label) >= severityRank('Nặng');
 
 function getOverallMentalState(scores) {
     const rows = [{ id: 'stress' }, { id: 'anxiety' }, { id: 'depression' }];
@@ -530,7 +540,7 @@ function renderAuth() {
     const isLogin = authMode === 'login';
     const saved = getSavedCredentials();
     const cloudBadge = supabaseReady
-        ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest"><i data-lucide="cloud" class="w-3 h-3"></i> Cloud Sync</span>'
+        ? '<span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-[10px] font-bold text-emerald-700 uppercase tracking-widest"><i data-lucide="cloud" class="w-3 h-3"></i> Trực tuyến</span>'
         : '';
 
     return `
@@ -609,6 +619,9 @@ function renderAuth() {
 
                 <p class="text-center text-[10px] text-slate-400 mt-5 font-semibold">
                     Dữ liệu được mã hóa và bảo mật · THPT Gia Lộc
+                </p>
+                <p class="text-center mt-2">
+                    <a href="#admin" onclick="renderAdminPage(); return false;" class="text-[10px] text-slate-300 hover:text-slate-400 font-semibold">Quản trị viên</a>
                 </p>
             </div>
         </div>`;
@@ -702,12 +715,12 @@ function renderStart() {
                 <div class="mt-8 grid gap-4 sm:grid-cols-2 w-full max-w-md">
                     <div class="rounded-2xl border-2 border-blue-200 bg-white p-5 text-center shadow-md" style="box-shadow:0 4px 20px rgba(79,142,201,0.18);">
                         <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1" style="color:#4F8EC9; letter-spacing:0.18em;">DASS-21</p>
-                        <p class="text-4xl font-black brand-gradient-text">24 câu</p>
+                        <p class="text-4xl font-black brand-gradient-text">21 câu</p>
                         <p class="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
                     </div>
                     <div class="rounded-2xl border-2 border-teal-200 bg-white p-5 text-center shadow-md" style="box-shadow:0 4px 20px rgba(66,200,168,0.18);">
                         <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1" style="color:#42C8A8; letter-spacing:0.18em;">MBI-SS</p>
-                        <p class="text-4xl font-black brand-gradient-text">18 câu</p>
+                        <p class="text-4xl font-black brand-gradient-text">15 câu</p>
                         <p class="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
                     </div>
                 </div>
@@ -758,7 +771,7 @@ function renderMiniHistory(latest, prev) {
                 ${prev ? renderTrendBadge(latest.scores.depression, prev.scores.depression, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Burnout</p>
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Nguy cơ</p>
                 <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
             </div>
         </div>
@@ -881,9 +894,11 @@ function renderResult() {
         </div>`;
     }).join('');
 
-    const cloudMsg = supabaseReady
-        ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> Đã lưu lên Cloud</span>'
-        : '<span class="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500"><i data-lucide="save" class="w-3.5 h-3.5"></i> Đã lưu</span>';
+    const cloudMsg = !supabaseReady
+        ? '<span class="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500"><i data-lucide="save" class="w-3.5 h-3.5"></i> Đã lưu trên máy này</span>'
+        : lastSaveOk
+            ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> Đã lưu lên Cloud</span>'
+            : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 text-xs font-bold text-amber-700"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Lưu Cloud thất bại — kết quả chỉ lưu tạm trên máy này</span>';
 
     const div = communityStats.count > 0 ? communityStats.count : 1;
 
@@ -927,7 +942,7 @@ function renderResult() {
                         </div>
                         <div>
                             <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kiệt quệ học đường</p>
-                            <h3 class="text-base font-black text-slate-800">Burnout (MBI-SS)</h3>
+                            <h3 class="text-base font-black text-slate-800">Nguy cơ (MBI-SS)</h3>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1076,7 +1091,7 @@ function renderHistorySection(history) {
                             <span class="text-[10px] text-slate-400 ml-2">${timeStr}</span>
                             ${isLatest ? '<span class="ml-2 score-badge" style="background:#4F8EC918;color:#4F8EC9;">Mới nhất</span>' : ''}
                         </div>
-                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Burnout ${mbiPct}%</span>
+                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Nguy cơ ${mbiPct}%</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">${cellsHTML}</div>
                 </div>
@@ -1192,7 +1207,9 @@ function initDonutChart() {
     const maxTotal = 90;
     const riskRaw = exhaustion + cynicism + lowEfficacy;
     const safeRaw = maxTotal - riskRaw;
-    const riskPct = isSafe ? 0 : Math.round((riskRaw / maxTotal) * 100);
+    // Dùng chung getMbiRiskPct() (cùng công thức với bảng Admin, lịch sử khảo sát...)
+    // thay vì tính lại % ở đây, để biểu đồ donut luôn khớp 100% với các nơi khác.
+    const riskPct = getMbiRiskPct(currentScores);
     const safeColor = '#CBD5E1';
 
     const el = document.getElementById('donutCenterValue');
@@ -1357,10 +1374,10 @@ function getAdminFilteredData() {
     }
     if (adminFilter !== 'all') {
         data = data.filter(r => {
-            if (adminFilter === 'stress') return getLevelConfig('stress', r.stress || 0).label !== 'Tot';
-            if (adminFilter === 'anxiety') return getLevelConfig('anxiety', r.anxiety || 0).label !== 'Tot';
-            if (adminFilter === 'depression') return getLevelConfig('depression', r.depression || 0).label !== 'Tot';
-            if (adminFilter === 'burnout') return getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 }) >= 25;
+            if (adminFilter === 'stress') return isAttentionLevel(getLevelConfig('stress', r.stress || 0).label);
+            if (adminFilter === 'anxiety') return isAttentionLevel(getLevelConfig('anxiety', r.anxiety || 0).label);
+            if (adminFilter === 'depression') return isAttentionLevel(getLevelConfig('depression', r.depression || 0).label);
+            if (adminFilter === 'burnout') return isAttentionLevel(getMbiLevelConfig(getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 })).label);
             return true;
         });
     }
@@ -1376,17 +1393,18 @@ function getAdminFilteredData() {
 
 function exportAdminCSV() {
     const data = getAdminFilteredData();
-    const headers = ['Ten', 'Ngay', 'Stress', 'Lo au', 'Tram cam', 'Muc Stress', 'Muc Lo au', 'Muc Tram cam', 'Kiet que CX', 'Hoai nghi', 'Hieu qua HT', 'Burnout%'];
+    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức Nguy Cơ', 'Burnout%'];
     const rows = data.map(r => {
         const mbi = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
         return [
-            '"' + (r.user_name || 'An danh').replace(/"/g, '') + '"',
+            '"' + (r.user_name || 'Ẩn danh').replace(/"/g, '') + '"',
             r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
             (r.stress || 0) * 2, (r.anxiety || 0) * 2, (r.depression || 0) * 2,
             getLevelConfig('stress', r.stress || 0).label,
             getLevelConfig('anxiety', r.anxiety || 0).label,
             getLevelConfig('depression', r.depression || 0).label,
-            r.emotional_exhaustion || 0, r.cynicism || 0, r.academic_efficacy || 0, mbi + '%'
+            r.emotional_exhaustion || 0, r.cynicism || 0, r.academic_efficacy || 0,
+            getMbiLevelConfig(mbi).label, mbi + '%'
         ].join(',');
     });
     const csv = [headers.join(','), ...rows].join('\n');
@@ -1406,28 +1424,28 @@ function renderAdminPage() {
                     <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-lg mb-4" style="background:linear-gradient(135deg,#0D3348,#1e5a7a);">
                         <i data-lucide="shield-check" style="width:28px;height:28px;color:#fff;"></i>
                     </div>
-                    <h1 class="text-2xl font-black text-slate-800">Trang Quan Tri</h1>
-                    <p class="text-sm text-slate-500 font-semibold mt-1">THPT Gia Loc - Admin Portal</p>
+                    <h1 class="text-2xl font-black text-slate-800">Trang Quản Trị</h1>
+                    <p class="text-sm text-slate-500 font-semibold mt-1">THPT Gia Lộc - Cổng Quản Trị</p>
                 </div>
                 <div class="card-lg p-7">
                     <div id="adminLoginError" style="display:none;margin-bottom:1rem;padding:0.75rem;border-radius:12px;background:#FFF1F2;border:1px solid #FECDD3;color:#BE123C;font-size:13px;font-weight:700;"></div>
                     <form onsubmit="handleAdminLogin(event)" class="space-y-4">
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email Admin</label>
-                            <input type="email" name="adminEmail" required placeholder="nhập gmail admin"
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Email Quản Trị</label>
+                            <input type="email" name="adminEmail" required placeholder="Nhập email quản trị"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <div>
-                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Mat khau</label>
-                            <input type="password" name="adminPassword" required placeholder="nhập mật khẩu"
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Mật khẩu</label>
+                            <input type="password" name="adminPassword" required placeholder="Nhập mật khẩu"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <button type="submit" class="btn-primary w-full" style="border-radius:14px;padding:0.9rem;">
-                            Dang nhap Admin
+                            Đăng nhập Quản Trị
                         </button>
                     </form>
-                    <button onclick="step='auth';renderApp();" class="w-full mt-3 text-xs font-bold text-slate-400 hover:text-slate-600 py-2">
-                        Quay ve trang hoc sinh
+                    <button onclick="window.location.hash='';step='auth';renderApp();" class="w-full mt-3 text-xs font-bold text-slate-400 hover:text-slate-600 py-2">
+                        Quay về trang học sinh
                     </button>
                 </div>
             </div>
@@ -1435,14 +1453,23 @@ function renderAdminPage() {
         lucide.createIcons(); return;
     }
 
+    // Ghi nhớ ô đang được gõ (và vị trí con trỏ) trước khi vẽ lại toàn trang,
+    // vì root.innerHTML sẽ tạo lại toàn bộ DOM và làm mất focus hiện tại.
+    // Đây là nguyên nhân khiến ô tìm kiếm trước đây chỉ gõ được 1 ký tự rồi bị mất focus.
+    const prevActive = document.activeElement;
+    const focusedId = prevActive && prevActive.id ? prevActive.id : null;
+    const caretStart = focusedId && typeof prevActive.selectionStart === 'number' ? prevActive.selectionStart : null;
+    const caretEnd = focusedId && typeof prevActive.selectionEnd === 'number' ? prevActive.selectionEnd : null;
+
     const filtered = getAdminFilteredData();
     const total = adminData.length;
     const needsAttention = adminData.filter(r => {
-        const sOk = getLevelConfig('stress', r.stress || 0).label === 'Tot';
-        const aOk = getLevelConfig('anxiety', r.anxiety || 0).label === 'Tot';
-        const dOk = getLevelConfig('depression', r.depression || 0).label === 'Tot';
-        const bOk = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 }) < 25;
-        return !sOk || !aOk || !dOk || !bOk;
+        const sBad = isAttentionLevel(getLevelConfig('stress', r.stress || 0).label);
+        const aBad = isAttentionLevel(getLevelConfig('anxiety', r.anxiety || 0).label);
+        const dBad = isAttentionLevel(getLevelConfig('depression', r.depression || 0).label);
+        const rBurnout = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
+        const bBad = isAttentionLevel(getMbiLevelConfig(rBurnout).label);
+        return sBad || aBad || dBad || bBad;
     }).length;
     const avgStress = total > 0 ? (adminData.reduce((s, r) => s + (r.stress || 0) * 2, 0) / total).toFixed(1) : '--';
     const avgAnxiety = total > 0 ? (adminData.reduce((s, r) => s + (r.anxiety || 0) * 2, 0) / total).toFixed(1) : '--';
@@ -1458,16 +1485,16 @@ function renderAdminPage() {
         const dL = getLevelConfig('depression', r.depression || 0);
         const mbiPct = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
         const mbiLvl = getMbiLevelConfig(mbiPct);
-        const isAlert = sL.label !== 'Tot' || aL.label !== 'Tot' || dL.label !== 'Tot' || mbiPct >= 25;
+        const isAlert = isAttentionLevel(sL.label) || isAttentionLevel(aL.label) || isAttentionLevel(dL.label) || isAttentionLevel(mbiLvl.label);
         return `<tr style="border-bottom:1px solid #F1F5F9;background:${isAlert ? '#FFFBEB' : '#fff'};">
             <td style="padding:10px 16px;font-size:12px;font-weight:700;color:#1e293b;white-space:nowrap;">
-                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isAlert ? '#F43F5E' : '#10B981'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>${r.user_name || 'An danh'}
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isAlert ? '#F43F5E' : '#10B981'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>${r.user_name || 'Ẩn danh'}
             </td>
             <td style="padding:10px 16px;font-size:11px;color:#64748b;white-space:nowrap;">${dateStr}<br><span style="font-size:10px;color:#94a3b8;">${timeStr}</span></td>
             <td style="padding:10px 16px;text-align:center;">${mkBadge(sL.label, sL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.stress || 0) * 2}/42</span></td>
             <td style="padding:10px 16px;text-align:center;">${mkBadge(aL.label, aL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.anxiety || 0) * 2}/42</span></td>
             <td style="padding:10px 16px;text-align:center;">${mkBadge(dL.label, dL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.depression || 0) * 2}/42</span></td>
-            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiPct + '%', mbiLvl.hex)}</td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiLvl.label, mbiLvl.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${mbiPct}% nguy cơ</span></td>
         </tr>`;
     }).join('');
 
@@ -1486,7 +1513,7 @@ function renderAdminPage() {
         <p style="font-size:2rem;font-weight:900;color:${s.color};line-height:1;">${s.value}</p>
     </div>`).join('');
 
-    const filterBtns = [['all', 'Tat ca'], ['stress', 'Stress'], ['anxiety', 'Lo au'], ['depression', 'Tram cam'], ['burnout', 'Burnout']].map(([v, l]) =>
+    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Nguy cơ']].map(([v, l]) =>
         `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#64748b'};cursor:pointer;font-family:inherit;">${l}</button>`
     ).join('');
 
@@ -1500,14 +1527,14 @@ function renderAdminPage() {
                     </div>
                     <div>
                         <h1 style="font-size:1rem;font-weight:900;color:#1e293b;margin:0;line-height:1.2;">Admin</h1>
-                        <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#94a3b8;margin:0;">THPT Gia Loc - Admin</p>
+                        <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#94a3b8;margin:0;">THPT Gia Lộc - Quản Trị</p>
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
                     <button onclick="loadAdminData()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Làm mới</button>
-                    <button onclick="exportAdminCSV()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#10B981;border-color:#BBF7D0;background:#F0FDF4;"><i data-lucide="download" style="width:13px;height:13px;"></i> In trang</button>
+                    <button onclick="exportAdminCSV()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#10B981;border-color:#BBF7D0;background:#F0FDF4;"><i data-lucide="download" style="width:13px;height:13px;"></i> Xuất CSV</button>
                     <button onclick="adminMode=false;renderAdminPage();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#F43F5E;border-color:#FECDD3;background:#FFF1F2;"><i data-lucide="log-out" style="width:13px;height:13px;"></i> Đăng xuất</button>
-                    <button onclick="step='auth';renderApp();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Trang HS</button>
+                    <button onclick="window.location.hash='';step='auth';renderApp();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Trang HS</button>
                 </div>
             </div>
         </header>
@@ -1518,26 +1545,26 @@ function renderAdminPage() {
             <div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);padding:1.25rem;">
                 <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;">
                     <div style="position:relative;flex:1;min-width:160px;">
-                        <input type="text" placeholder="Tim theo ten hoc sinh..." value="${adminSearch}"
+                        <input type="text" id="adminSearchInput" placeholder="Tìm theo tên học sinh..." value="${adminSearch}"
                             oninput="adminSearch=this.value;renderAdminPage();"
                             style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:13px;font-family:inherit;outline:none;background:#F8FAFC;color:#1e293b;box-sizing:border-box;">
                     </div>
                     <div style="display:flex;gap:5px;flex-wrap:wrap;">${filterBtns}</div>
                     <select onchange="adminSort=this.value;renderAdminPage();"
                         style="padding:0.5rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:12px;font-weight:700;font-family:inherit;background:#F8FAFC;color:#475569;outline:none;cursor:pointer;">
-                        <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Moi nhat truoc</option>
-                        <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cu nhat truoc</option>
-                        <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhat</option>
-                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Burnout cao nhat</option>
+                        <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất trước</option>
+                        <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất trước</option>
+                        <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhất</option>
+                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Nguy cơ cao nhất</option>
                     </select>
                 </div>
-                <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hien thi ${filtered.length} / ${total} ket qua ${adminFilter !== 'all' ? '(da loc)' : ''}</p>
+                <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hiển thị ${filtered.length} / ${total} kết quả ${adminFilter !== 'all' ? '(đã lọc)' : ''}</p>
             </div>
             <div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);overflow:hidden;">
                 ${adminLoading
-            ? `<div style="padding:4rem;text-align:center;"><p style="color:#94a3b8;font-weight:700;font-size:13px;">Dang tai du lieu...</p></div>`
+            ? `<div style="padding:4rem;text-align:center;"><p style="color:#94a3b8;font-weight:700;font-size:13px;">Đang tải dữ liệu...</p></div>`
             : filtered.length === 0
-                ? `<div style="padding:4rem;text-align:center;color:#94a3b8;font-weight:700;font-size:14px;">Khong co du lieu phu hop.</div>`
+                ? `<div style="padding:4rem;text-align:center;color:#94a3b8;font-weight:700;font-size:14px;">Không có dữ liệu phù hợp.</div>`
                 : `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
                         <thead><tr style="background:#F8FAFC;border-bottom:2px solid #E2E8F0;">
                             <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Học sinh</th>
@@ -1560,6 +1587,23 @@ function renderAdminPage() {
         </main>
     </div>`;
     lucide.createIcons();
+
+    // Khôi phục focus + vị trí con trỏ cho ô đang gõ (vd. ô tìm kiếm) sau khi vẽ lại DOM
+    if (focusedId) {
+        const toFocus = document.getElementById(focusedId);
+        if (toFocus) {
+            toFocus.focus();
+            if (caretStart !== null && typeof toFocus.setSelectionRange === 'function') {
+                toFocus.setSelectionRange(caretStart, caretEnd);
+            }
+        }
+    }
 }
 
-renderApp();
+// ===== KHỞI CHẠY ỨNG DỤNG =====
+// Truy cập index.html#admin để vào Trang Quản Trị (vẫn cần đăng nhập riêng bằng ADMIN_CREDENTIALS).
+if (window.location.hash === '#admin') {
+    renderAdminPage();
+} else {
+    renderApp();
+}
