@@ -109,6 +109,7 @@ let authError = '';
 let authSuccess = '';
 let collapseState = { mbi: false, dass: false, community: false, history: true };
 let lastSaveOk = true; // false nếu lần lưu kết quả gần nhất lên Cloud bị lỗi
+let isSubmitting = false; // true trong lúc đang gửi bài — chặn bấm "Nộp bài" 2 lần gây lưu trùng
 
 // ===== SAVED CREDENTIALS (Remember Me) =====
 function getSavedCredentials() {
@@ -453,10 +454,15 @@ function getOverallMentalState(scores) {
     return configs.reduce((worst, cur) => severityRank(cur.config.label) > severityRank(worst.config.label) ? cur : worst);
 }
 function getMbiRiskPct(scores) {
-    const isSafe = scores.emotionalExhaustion === 0 && scores.cynicism === 0;
-    if (isSafe) return 0;
-    const lowEfficacy = Math.max(0, 36 - scores.academicEfficacy);
-    return Math.round(((scores.emotionalExhaustion + scores.cynicism + lowEfficacy) / 90) * 100);
+    // Chuẩn hoá từng tiểu mục về % trên khung điểm riêng của nó (30 / 24 / 36),
+    // rồi lấy trung bình cộng 3 tiểu mục (mỗi mục nặng 1/3 như nhau).
+    // KHÔNG cộng điểm thô rồi chia chung cho 90 — cách cũ khiến tiểu mục có khung điểm
+    // lớn (Hiệu quả học tập, /36) pha loãng mức độ nghiêm trọng của 2 tiểu mục kia
+    // (vd. Kiệt quệ 30/30 + Hoài nghi 24/24 max nhưng Hiệu quả học tập tốt vẫn chỉ ra "Vừa").
+    const exhPct = (scores.emotionalExhaustion / 30) * 100;
+    const cynPct = (scores.cynicism / 24) * 100;
+    const lowEffPct = (Math.max(0, 36 - scores.academicEfficacy) / 36) * 100;
+    return Math.round((exhPct + cynPct + lowEffPct) / 3);
 }
 function getMbiLevelConfig(riskPct) {
     let label = 'Tốt';
@@ -497,7 +503,7 @@ function renderTrendBadge(curr, prev, lowerIsBetter = true) {
     if (!t) return '';
     let isBetter = lowerIsBetter ? t.dir === 'down' : t.dir === 'up';
     let color = t.dir === 'same' ? '#94A3B8' : (isBetter ? '#10B981' : '#F43F5E');
-    let emoji = t.dir === 'same' ? '→' : (isBetter ? '↓ tốt hơn' : '↑ xấu hơn');
+    let emoji = t.dir === 'same' ? '→' : (isBetter ? '↑ tốt hơn' : '↓ tệ hơn');
     return `<span class="score-badge" style="background:${color}15; color:${color};">${emoji} ${Math.abs(curr - prev)}</span>`;
 }
 
@@ -838,8 +844,8 @@ function renderQuiz() {
                     </button>
                     <span class="text-xs font-bold text-slate-400">${answeredCount}/${QUESTIONS.length} đã trả lời</span>
                     ${isLast
-            ? `<button type="button" onclick="handleSubmit()" ${!allAnswered ? 'disabled' : ''} class="btn-primary disabled:opacity-50" style="border-radius:12px;padding:0.65rem 1.5rem;">
-                            <span>Nộp bài</span><i data-lucide="check-circle" class="h-5 w-5"></i>
+            ? `<button type="button" onclick="handleSubmit()" ${(!allAnswered || isSubmitting) ? 'disabled' : ''} class="btn-primary disabled:opacity-50" style="border-radius:12px;padding:0.65rem 1.5rem;">
+                            <span>${isSubmitting ? 'Đang nộp...' : 'Nộp bài'}</span><i data-lucide="check-circle" class="h-5 w-5"></i>
                            </button>`
             : `<button type="button" onclick="handleNext()" class="btn-primary" style="border-radius:12px;padding:0.65rem 1.5rem;">
                             <span>Tiếp theo</span><i data-lucide="chevron-right" class="h-5 w-5"></i>
@@ -1184,7 +1190,10 @@ function handleJump(idx) { currentIndex = idx; renderApp(); }
 function handleAnswer(qId, val) { answers[qId] = val; renderApp(); }
 
 async function handleSubmit() {
+    if (isSubmitting) return; // đang gửi rồi — bỏ qua các lần bấm/gọi thêm
     if (Object.keys(answers).length !== QUESTIONS.length) return;
+    isSubmitting = true;
+    renderApp(); // render lại ngay để vô hiệu hóa nút "Nộp bài" trước khi chờ mạng
     currentScores = {
         emotionalExhaustion: getSum(answers, MBI_EMOTIONAL_EXHAUSTION),
         cynicism: getSum(answers, MBI_CYNICISM),
@@ -1193,9 +1202,13 @@ async function handleSubmit() {
         anxiety: getSum(answers, DASS_ANXIETY),
         depression: getSum(answers, DASS_DEPRESSION)
     };
-    await saveResult(currentScores);
-    await loadCommunityStats();
-    step = 'result';
+    try {
+        await saveResult(currentScores);
+        await loadCommunityStats();
+        step = 'result';
+    } finally {
+        isSubmitting = false;
+    }
     renderApp();
     window.scrollTo({ top: 0 });
 }
@@ -1213,18 +1226,13 @@ function initDonutChart() {
     const exhaustion = currentScores.emotionalExhaustion;
     const cynicism = currentScores.cynicism;
     const rawEfficacy = currentScores.academicEfficacy;
-    // lowEfficacy: only count as risk if efficacy is genuinely low (< half of max=36)
-    // If student answered all 0 on efficacy questions, that's actually 0 engagement → not "high risk"
-    // Real burnout risk from efficacy only when they score meaningfully (answered MBI questions)
-    // Safe condition: exhaustion=0 AND cynicism=0 (the two burnout-negative indicators)
-    const isSafe = exhaustion === 0 && cynicism === 0;
-    const lowEfficacy = isSafe ? 0 : Math.max(0, 36 - rawEfficacy);
-    const maxTotal = 90;
-    const riskRaw = exhaustion + cynicism + lowEfficacy;
-    const safeRaw = maxTotal - riskRaw;
+    const lowEfficacy = Math.max(0, 36 - rawEfficacy);
     // Dùng chung getMbiRiskPct() (cùng công thức với bảng Admin, lịch sử khảo sát...)
     // thay vì tính lại % ở đây, để biểu đồ donut luôn khớp 100% với các nơi khác.
     const riskPct = getMbiRiskPct(currentScores);
+    // "An toàn" chỉ khi nguy cơ tổng = 0%, tức cả 3 tiểu mục đều ở mức tốt nhất
+    // (trước đây chỉ xét Kiệt quệ=0 và Hoài nghi=0, bỏ sót trường hợp Hiệu quả học tập thấp).
+    const isSafe = riskPct === 0;
     const safeColor = '#CBD5E1';
 
     const el = document.getElementById('donutCenterValue');
@@ -1234,9 +1242,11 @@ function initDonutChart() {
     const labelEl = document.getElementById('donutCenterLabel');
     if (labelEl) { labelEl.textContent = isSafe ? 'An toàn' : mbiLvl.label; labelEl.style.color = isSafe ? safeColor : mbiLvl.hex; }
 
-    const exhPct = isSafe ? 0 : Math.round((exhaustion / maxTotal) * 100);
-    const cynPct = isSafe ? 0 : Math.round((cynicism / maxTotal) * 100);
-    const lowPct = isSafe ? 0 : Math.round((lowEfficacy / maxTotal) * 100);
+    // Mỗi tiểu mục chuẩn hoá theo khung điểm riêng (30/24/36), nặng 1/3 như nhau trong tổng 100%
+    // — khớp đúng với cách getMbiRiskPct() ở trên tính ra riskPct.
+    const exhPct = isSafe ? 0 : Math.round((exhaustion / 30) * 100 / 3);
+    const cynPct = isSafe ? 0 : Math.round((cynicism / 24) * 100 / 3);
+    const lowPct = isSafe ? 0 : Math.round((lowEfficacy / 36) * 100 / 3);
     const safePct = 100 - exhPct - cynPct - lowPct;
 
     const legendEl = document.getElementById('donutLegend');
@@ -1252,7 +1262,7 @@ function initDonutChart() {
                 { color: '#4F8EC9', label: 'Kiệt quệ cảm xúc', pct: exhPct },
                 { color: '#F59E0B', label: 'Hoài nghi', pct: cynPct },
                 { color: '#F43F5E', label: 'Mất hiệu quả HT', pct: lowPct },
-                { color: '#E2E8F0', label: 'An toàn', pct: safePct }
+                { color: '#E2E8F0', label: 'Chưa ảnh hưởng', pct: safePct }
             ];
             legendEl.innerHTML = items.map(i =>
                 `<div style="display:flex;align-items:center;gap:6px;">
@@ -1267,7 +1277,7 @@ function initDonutChart() {
     if (donutChartInstance) donutChartInstance.destroy();
     const chartData = isSafe
         ? { labels: ['An toàn'], datasets: [{ data: [1], backgroundColor: [safeColor], borderColor: '#fff', borderWidth: 3, cutout: '70%' }] }
-        : { labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Mất hiệu quả HT', 'An toàn'], datasets: [{ data: [exhaustion, cynicism, lowEfficacy, safeRaw], backgroundColor: ['#4F8EC9', '#F59E0B', '#F43F5E', '#E2E8F0'], borderColor: '#fff', borderWidth: 3, cutout: '70%' }] };
+        : { labels: ['Kiệt quệ cảm xúc', 'Hoài nghi', 'Mất hiệu quả HT', 'Chưa ảnh hưởng'], datasets: [{ data: [exhPct, cynPct, lowPct, safePct], backgroundColor: ['#4F8EC9', '#F59E0B', '#F43F5E', '#E2E8F0'], borderColor: '#fff', borderWidth: 3, cutout: '70%' }] };
     donutChartInstance = new Chart(canvas.getContext('2d'), {
         type: 'doughnut',
         data: chartData,
