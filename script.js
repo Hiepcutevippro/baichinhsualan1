@@ -213,9 +213,21 @@ async function handleAuthSubmit(e) {
 
         step = 'start';
     } catch (err) {
-        authError = err.message === 'Invalid login credentials' ? 'Sai email hoặc mật khẩu!'
-            : err.message === 'User already registered' ? 'Email này đã được đăng ký!'
-                : err.message;
+        const rawMsg = (err && typeof err.message === 'string') ? err.message : '';
+        const lower = rawMsg.toLowerCase();
+        if (rawMsg === 'Invalid login credentials') {
+            authError = 'Sai email hoặc mật khẩu!';
+        } else if (lower.includes('already registered') || lower.includes('already exists') || err?.code === 'user_already_exists') {
+            authError = 'Email này đã được đăng ký!';
+        } else if (lower.includes('email not confirmed') || err?.code === 'email_not_confirmed') {
+            authError = 'Tài khoản này chưa được xác nhận nên chưa đăng nhập được. Nếu bạn vừa tạo tài khoản, hãy thử tạo lại tài khoản khác hoặc liên hệ quản trị viên để được kích hoạt.';
+        } else if (lower.includes('password should contain') || lower.includes('password is too weak') || err?.code === 'weak_password') {
+            authError = 'Mật khẩu chưa đủ mạnh: cần có ít nhất 1 chữ thường, 1 chữ hoa và 1 chữ số.';
+        } else if (!rawMsg || rawMsg === '{}' || rawMsg === '[object Object]') {
+            authError = 'Có lỗi xảy ra, vui lòng thử lại. Nếu vẫn gặp lỗi, thử tắt trình chặn quảng cáo (AdBlock) hoặc dùng cửa sổ ẩn danh.';
+        } else {
+            authError = rawMsg;
+        }
     }
     authLoading = false;
     renderApp();
@@ -287,11 +299,12 @@ function showChangePasswordModal() {
 
 function toggleCpwVisibility(inputId, iconId) {
     const input = document.getElementById(inputId);
-    const icon = document.getElementById(iconId);
-    if (!input) return;
+    const btn = input ? input.nextElementSibling : null;
+    if (!input || !btn) return;
     const hidden = input.type === 'password';
     input.type = hidden ? 'text' : 'password';
-    if (icon) { icon.setAttribute('data-lucide', hidden ? 'eye' : 'eye-off'); lucide.createIcons(); }
+    btn.innerHTML = `<i data-lucide="${hidden ? 'eye' : 'eye-off'}" id="${iconId}" style="width:18px;height:18px;"></i>`;
+    lucide.createIcons();
 }
 
 function closeChangePasswordModal() {
@@ -597,11 +610,13 @@ function renderAuth() {
                             </div>
                         </div>
                         ${isLogin ? `
-                        <label class="flex items-center gap-3 cursor-pointer select-none mt-1">
-                            <input type="checkbox" name="rememberMe" class="checkbox-custom" ${saved ? 'checked' : ''}>
-                            <span class="text-sm text-slate-600 font-semibold">Ghi nhớ đăng nhập</span>
-                            ${saved ? '<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Đã lưu</span>' : ''}
-                        </label>` : ''}
+                        <div class="flex items-center justify-between -mt-2">
+                            <label class="flex items-center gap-3 cursor-pointer select-none">
+                                <input type="checkbox" name="rememberMe" class="checkbox-custom" ${saved ? 'checked' : ''}>
+                                <span class="text-sm text-slate-600 font-semibold">Ghi nhớ đăng nhập</span>
+                                ${saved ? '<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Đã lưu</span>' : ''}
+                            </label>
+                        </div>` : ''}
                         <button type="submit" ${authLoading ? 'disabled' : ''} class="btn-primary w-full mt-1 disabled:opacity-60" style="border-radius:14px; padding:0.9rem 1.5rem; font-size:1rem;">
                             ${authLoading ? '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
                         </button>
@@ -771,7 +786,7 @@ function renderMiniHistory(latest, prev) {
                 ${prev ? renderTrendBadge(latest.scores.depression, prev.scores.depression, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Nguy cơ</p>
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Burnout</p>
                 <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
             </div>
         </div>
@@ -942,7 +957,7 @@ function renderResult() {
                         </div>
                         <div>
                             <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kiệt quệ học đường</p>
-                            <h3 class="text-base font-black text-slate-800">Nguy cơ (MBI-SS)</h3>
+                            <h3 class="text-base font-black text-slate-800">Burnout (MBI-SS)</h3>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1091,7 +1106,7 @@ function renderHistorySection(history) {
                             <span class="text-[10px] text-slate-400 ml-2">${timeStr}</span>
                             ${isLatest ? '<span class="ml-2 score-badge" style="background:#4F8EC918;color:#4F8EC9;">Mới nhất</span>' : ''}
                         </div>
-                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Nguy cơ ${mbiPct}%</span>
+                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Burnout ${mbiPct}%</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">${cellsHTML}</div>
                 </div>
@@ -1302,13 +1317,14 @@ function initCommunityCharts() {
 // ===== PASSWORD TOGGLE =====
 function togglePasswordVisibility() {
     const input = document.getElementById('passwordInput');
-    const icon = document.getElementById('pwToggleIcon');
     const btn = document.getElementById('pwToggleBtn');
-    if (!input) return;
+    if (!input || !btn) return;
     const isHidden = input.type === 'password';
     input.type = isHidden ? 'text' : 'password';
-    if (icon) { icon.setAttribute('data-lucide', isHidden ? 'eye' : 'eye-off'); lucide.createIcons(); }
-    if (btn) { btn.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu'); }
+    // Dựng lại toàn bộ nội dung nút từ đầu, đảm bảo luôn chỉ có đúng 1 icon
+    btn.innerHTML = `<i data-lucide="${isHidden ? 'eye' : 'eye-off'}" class="w-5 h-5" id="pwToggleIcon"></i>`;
+    lucide.createIcons();
+    btn.setAttribute('aria-label', isHidden ? 'Ẩn mật khẩu' : 'Hiển thị mật khẩu');
     const len = input.value.length;
     input.setSelectionRange(len, len);
     input.focus();
@@ -1393,7 +1409,7 @@ function getAdminFilteredData() {
 
 function exportAdminCSV() {
     const data = getAdminFilteredData();
-    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức Nguy Cơ', 'Burnout%'];
+    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức Burnout', 'Burnout%'];
     const rows = data.map(r => {
         const mbi = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
         return [
@@ -1513,7 +1529,7 @@ function renderAdminPage() {
         <p style="font-size:2rem;font-weight:900;color:${s.color};line-height:1;">${s.value}</p>
     </div>`).join('');
 
-    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Nguy cơ']].map(([v, l]) =>
+    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Burnout']].map(([v, l]) =>
         `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#64748b'};cursor:pointer;font-family:inherit;">${l}</button>`
     ).join('');
 
@@ -1555,7 +1571,7 @@ function renderAdminPage() {
                         <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất trước</option>
                         <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất trước</option>
                         <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhất</option>
-                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Nguy cơ cao nhất</option>
+                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Burnout cao nhất</option>
                     </select>
                 </div>
                 <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hiển thị ${filtered.length} / ${total} kết quả ${adminFilter !== 'all' ? '(đã lọc)' : ''}</p>
@@ -1572,7 +1588,7 @@ function renderAdminPage() {
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Stress</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo âu</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Trầm cảm</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Nguy cơ</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Burnout</th>
                         </tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table></div>`}
