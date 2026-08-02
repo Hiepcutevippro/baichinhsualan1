@@ -878,14 +878,22 @@ function renderResult() {
     const mbiHTML = MBI_ROWS.map(row => {
         const val = currentScores[row.id];
         const pct = Math.round((val / row.max) * 100);
-        const color = row.higherBetter ? (pct >= 60 ? '#10B981' : '#F59E0B') : (pct >= 60 ? '#F43F5E' : pct >= 30 ? '#F59E0B' : '#10B981');
+        // "Hiệu quả học tập" là tiểu mục NGƯỢC CHIỀU: điểm thô càng THẤP thì rủi ro càng CAO.
+        // Phải dùng riskPct (đảo chiều cho higherBetter) cho cả màu lẫn độ dài thanh bar —
+        // nếu dùng thẳng điểm thô (pct) thì 0/36 (tệ nhất) lại vẽ ra thanh RỖNG như thể
+        // an toàn nhất, khiến người xem tưởng "toàn số 0 = 0% rủi ro" (sai logic).
+        const riskPct = row.higherBetter ? 100 - pct : pct;
+        const color = riskPct >= 60 ? '#F43F5E' : riskPct >= 30 ? '#F59E0B' : '#10B981';
         return `<div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
             <div class="flex items-center justify-between mb-2">
-                <span class="text-xs font-black text-slate-600">${row.title}</span>
+                <div>
+                    <span class="text-xs font-black text-slate-600">${row.title}</span>
+                    ${row.higherBetter ? '<span class="block text-[9px] font-semibold text-slate-400 mt-0.5">Điểm càng thấp, rủi ro càng cao</span>' : ''}
+                </div>
                 <span class="font-mono text-base font-black" style="color:${color};">${val}<span class="text-xs text-slate-400 font-semibold">/${row.max}</span></span>
             </div>
             <div class="h-2 rounded-full bg-slate-200 overflow-hidden">
-                <div class="h-full rounded-full" style="width:${pct}%; background:${color};"></div>
+                <div class="h-full rounded-full" style="width:${riskPct}%; background:${color};"></div>
             </div>
         </div>`;
     }).join('');
@@ -1520,7 +1528,7 @@ function renderAdminPage() {
             <td style="padding:10px 16px;text-align:center;">${mkBadge(sL.label, sL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.stress || 0) * 2}/42</span></td>
             <td style="padding:10px 16px;text-align:center;">${mkBadge(aL.label, aL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.anxiety || 0) * 2}/42</span></td>
             <td style="padding:10px 16px;text-align:center;">${mkBadge(dL.label, dL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.depression || 0) * 2}/42</span></td>
-            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiLvl.label, mbiLvl.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${mbiPct}% nguy cơ</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiLvl.label, mbiLvl.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${mbiPct}% nguy cơ</span><br><span style="font-size:9px;color:#cbd5e1;font-weight:700;" title="3 tiểu mục MBI-SS — độc lập với điểm DASS-21 (Stress/Lo âu/Trầm cảm)">KQ ${r.emotional_exhaustion || 0}/30 · HN ${r.cynicism || 0}/24 · HQ ${r.academic_efficacy || 0}/36</span></td>
         </tr>`;
     }).join('');
 
