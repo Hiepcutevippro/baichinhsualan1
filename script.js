@@ -432,14 +432,42 @@ function getLevelConfig(scale, rawScore) {
     return { label, className: 'border-rose-200 bg-rose-50 text-rose-900', dot: 'bg-rose-500', hex: '#F43F5E', icon: 'alert-triangle' };
 }
 
-function getAdvice(label) {
-    switch (label) {
-        case 'Tốt': return 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.';
-        case 'Nhẹ': return 'Có vài dấu hiệu căng thẳng nhẹ. Thử dành 10–15 phút mỗi ngày để nghỉ ngơi, hít thở sâu hoặc đi dạo.';
-        case 'Vừa': return 'Mức độ đang ở ngưỡng vừa. Bạn nên sắp xếp lại lịch học hợp lý hơn, thử các kỹ thuật thư giãn và chia sẻ cảm xúc.';
-        case 'Nặng': return 'Chỉ số đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc chuyên gia để được hỗ trợ sớm.';
-        default: return 'Chỉ số đang ở mức rất cao. Khuyến khích bạn liên hệ ngay với chuyên gia tâm lý hoặc đường dây hỗ trợ sức khỏe tâm thần.';
+// Lời khuyên riêng cho từng thang đo (Stress / Lo âu / Trầm cảm / Burnout) ở từng mức độ.
+// Trước đây dùng chung 1 hàm getAdvice(label) cho cả 3 thẻ DASS -> thẻ "Trầm cảm" và "Lo âu"
+// bị hiển thị nhầm câu văn viết riêng cho "Stress" (vd. "dấu hiệu căng thẳng nhẹ") ở mức Nhẹ.
+const ADVICE_TEXT = {
+    stress: {
+        'Tốt': 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.',
+        'Nhẹ': 'Có vài dấu hiệu căng thẳng nhẹ. Thử dành 10–15 phút mỗi ngày để nghỉ ngơi, hít thở sâu hoặc đi dạo.',
+        'Vừa': 'Mức độ căng thẳng đang ở ngưỡng vừa. Bạn nên sắp xếp lại lịch học hợp lý hơn, thử các kỹ thuật thư giãn và chia sẻ cảm xúc với người thân.',
+        'Nặng': 'Chỉ số căng thẳng đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc chuyên gia để được hỗ trợ sớm.',
+        'Rất nặng': 'Chỉ số căng thẳng đang ở mức rất cao. Khuyến khích bạn liên hệ ngay với chuyên gia tâm lý hoặc đường dây hỗ trợ sức khỏe tâm thần.'
+    },
+    anxiety: {
+        'Tốt': 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.',
+        'Nhẹ': 'Có vài dấu hiệu lo âu nhẹ. Thử các bài tập hít thở sâu, thư giãn cơ hoặc dành thời gian cho hoạt động yêu thích để trấn tĩnh tinh thần.',
+        'Vừa': 'Mức độ lo âu đang ở ngưỡng vừa. Hãy thử ghi lại điều khiến bạn lo lắng, tập trung vào những gì có thể kiểm soát và chia sẻ với người bạn tin tưởng.',
+        'Nặng': 'Chỉ số lo âu đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc chuyên gia để được hỗ trợ sớm.',
+        'Rất nặng': 'Chỉ số lo âu đang ở mức rất cao. Khuyến khích bạn liên hệ ngay với chuyên gia tâm lý hoặc đường dây hỗ trợ sức khỏe tâm thần.'
+    },
+    depression: {
+        'Tốt': 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.',
+        'Nhẹ': 'Có vài dấu hiệu trầm buồn nhẹ. Thử duy trì thói quen sinh hoạt đều đặn, vận động nhẹ và giữ kết nối với bạn bè, người thân.',
+        'Vừa': 'Mức độ trầm cảm đang ở ngưỡng vừa. Đừng ngần ngại chia sẻ cảm xúc với người bạn tin tưởng, và cân nhắc trò chuyện cùng thầy cô tư vấn tâm lý.',
+        'Nặng': 'Chỉ số trầm cảm đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc chuyên gia để được hỗ trợ sớm.',
+        'Rất nặng': 'Chỉ số trầm cảm đang ở mức rất cao. Khuyến khích bạn liên hệ ngay với chuyên gia tâm lý hoặc đường dây hỗ trợ sức khỏe tâm thần.'
+    },
+    burnout: {
+        'Tốt': 'Bạn đang duy trì nhịp độ học tập khá cân bằng. Hãy tiếp tục giữ thói quen học - nghỉ hợp lý và ngủ đủ giấc.',
+        'Nhẹ': 'Có vài dấu hiệu quá tải học tập nhẹ. Thử sắp xếp lại thời gian biểu, xen kẽ giờ học với giờ nghỉ ngơi hợp lý.',
+        'Vừa': 'Mức độ kiệt sức học tập đang ở ngưỡng vừa. Hãy thử chia nhỏ mục tiêu học tập và dành thời gian cho sở thích cá nhân để lấy lại động lực.',
+        'Nặng': 'Chỉ số kiệt sức học tập đang ở mức nặng. Bạn nên tìm đến phòng tư vấn tâm lý học đường hoặc thầy cô để được hỗ trợ sớm.',
+        'Rất nặng': 'Chỉ số kiệt sức học tập đang ở mức rất cao. Khuyến khích bạn liên hệ ngay với chuyên gia tâm lý hoặc đường dây hỗ trợ sức khỏe tâm thần.'
     }
+};
+function getAdvice(scaleId, label) {
+    const table = ADVICE_TEXT[scaleId] || ADVICE_TEXT.stress;
+    return table[label] || table['Rất nặng'];
 }
 
 const SEVERITY_LEVELS = ['Tốt', 'Nhẹ', 'Vừa', 'Nặng', 'Rất nặng'];
@@ -454,15 +482,14 @@ function getOverallMentalState(scores) {
     return configs.reduce((worst, cur) => severityRank(cur.config.label) > severityRank(worst.config.label) ? cur : worst);
 }
 function getMbiRiskPct(scores) {
-    // Chuẩn hoá từng tiểu mục về % trên khung điểm riêng của nó (30 / 24 / 36),
-    // rồi lấy trung bình cộng 3 tiểu mục (mỗi mục nặng 1/3 như nhau).
-    // KHÔNG cộng điểm thô rồi chia chung cho 90 — cách cũ khiến tiểu mục có khung điểm
-    // lớn (Hiệu quả học tập, /36) pha loãng mức độ nghiêm trọng của 2 tiểu mục kia
-    // (vd. Kiệt quệ 30/30 + Hoài nghi 24/24 max nhưng Hiệu quả học tập tốt vẫn chỉ ra "Vừa").
+    // Dùng MAX thay vì trung bình cộng:
+    // Nếu bất kỳ 1 trong 3 tiểu mục nào đang ở mức nguy hiểm nhất thì % tổng phải phản ánh điều đó.
+    // Ví dụ: học sinh bị trầm cảm nặng → Kiệt quệ và Hoài nghi đều max
+    // → Hiệu quả học tập đương nhiên cũng bị kéo xuống → rủi ro 100%, không phải 67%.
     const exhPct = (scores.emotionalExhaustion / 30) * 100;
     const cynPct = (scores.cynicism / 24) * 100;
     const lowEffPct = (Math.max(0, 36 - scores.academicEfficacy) / 36) * 100;
-    return Math.round((exhPct + cynPct + lowEffPct) / 3);
+    return Math.round(Math.max(exhPct, cynPct, lowEffPct));
 }
 function getMbiLevelConfig(riskPct) {
     let label = 'Tốt';
@@ -733,16 +760,16 @@ function renderStart() {
                 </p>
             
 
-                <div class="mt-8 grid gap-4 sm:grid-cols-2 w-full max-w-md">
-                    <div class="rounded-2xl border-2 border-blue-200 bg-white p-5 text-center shadow-md" style="box-shadow:0 4px 20px rgba(79,142,201,0.18);">
-                        <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1" style="color:#4F8EC9; letter-spacing:0.18em;">DASS-21</p>
-                        <p class="text-4xl font-black brand-gradient-text">21 câu</p>
-                        <p class="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
+                <div class="mt-8 grid gap-4 sm:grid-cols-2 w-full max-w-lg">
+                    <div class="rounded-2xl border-[3px] border-blue-200 bg-white p-6 text-center shadow-md" style="box-shadow:0 4px 20px rgba(79,142,201,0.18);">
+                        <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1.5" style="color:#4F8EC9; letter-spacing:0.18em;">DASS-21</p>
+                        <p class="text-5xl font-black brand-gradient-text">21 câu</p>
+                        <p class="mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
                     </div>
-                    <div class="rounded-2xl border-2 border-teal-200 bg-white p-5 text-center shadow-md" style="box-shadow:0 4px 20px rgba(66,200,168,0.18);">
-                        <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1" style="color:#42C8A8; letter-spacing:0.18em;">MBI-SS</p>
-                        <p class="text-4xl font-black brand-gradient-text">15 câu</p>
-                        <p class="mt-1 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
+                    <div class="rounded-2xl border-[3px] border-teal-200 bg-white p-6 text-center shadow-md" style="box-shadow:0 4px 20px rgba(66,200,168,0.18);">
+                        <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1.5" style="color:#42C8A8; letter-spacing:0.18em;">MBI-SS</p>
+                        <p class="text-5xl font-black brand-gradient-text">15 câu</p>
+                        <p class="mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
                     </div>
                 </div>
                 <p class="mt-4 text-sm font-bold text-slate-500">Thời gian hoàn thành dự kiến: <span class="font-black text-slate-700">4 – 5 phút</span></p>
@@ -779,17 +806,17 @@ function renderMiniHistory(latest, prev) {
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
                 <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Stress</p>
                 ${badge(stressLabel)}
-                ${prev ? renderTrendBadge(latest.scores.stress, prev.scores.stress, true) : ''}
+                ${prev ? renderTrendBadge(latest.scores.stress * 2, prev.scores.stress * 2, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
                 <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Lo âu</p>
                 ${badge(anxLabel)}
-                ${prev ? renderTrendBadge(latest.scores.anxiety, prev.scores.anxiety, true) : ''}
+                ${prev ? renderTrendBadge(latest.scores.anxiety * 2, prev.scores.anxiety * 2, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
                 <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Trầm cảm</p>
                 ${badge(depLabel)}
-                ${prev ? renderTrendBadge(latest.scores.depression, prev.scores.depression, true) : ''}
+                ${prev ? renderTrendBadge(latest.scores.depression * 2, prev.scores.depression * 2, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
                 <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Burnout</p>
@@ -872,6 +899,9 @@ function renderResult() {
     const mbiRiskPct = getMbiRiskPct(currentScores);
     const mbiLevel = getMbiLevelConfig(mbiRiskPct);
     const adviceLabel = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? mbiLevel.label : overallState.config.label;
+    // Thẻ nào (burnout hay đúng thang DASS đang tệ nhất: stress/anxiety/depression) quyết định adviceLabel
+    // thì dùng đúng văn bản lời khuyên của thẻ đó, tránh lặp lại lỗi copy-paste như trên.
+    const adviceScale = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? 'burnout' : overallState.id;
     const adviceColor = getGaugeBandColor(adviceLabel);
 
     // MBI cards
@@ -888,7 +918,7 @@ function renderResult() {
             <div class="flex items-center justify-between mb-2">
                 <div>
                     <span class="text-xs font-black text-slate-600">${row.title}</span>
-                    ${row.higherBetter ? '<span class="block text-[9px] font-semibold text-slate-400 mt-0.5">Điểm càng thấp, rủi ro càng cao</span>' : ''}
+                    ${row.higherBetter ? `<div class="mt-1"><span class="score-badge" style="background:#F59E0B1F;color:#B45309;"><i data-lucide="info" class="w-3 h-3"></i>Điểm càng thấp, rủi ro càng cao</span></div>` : ''}
                 </div>
                 <span class="font-mono text-base font-black" style="color:${color};">${val}<span class="text-xs text-slate-400 font-semibold">/${row.max}</span></span>
             </div>
@@ -919,7 +949,7 @@ function renderResult() {
                     <div class="h-full rounded-full" style="width:${pct}%; background:${config.hex};"></div>
                 </div>
             </div>
-            <p class="mt-3 text-xs leading-5 opacity-80">${getAdvice(config.label)}</p>
+            <p class="mt-3 text-xs leading-5 opacity-80">${getAdvice(row.id, config.label)}</p>
         </div>`;
     }).join('');
 
@@ -936,7 +966,7 @@ function renderResult() {
     const historyHTML = renderHistorySection(history);
 
     return `
-        <section class="mx-auto flex flex-col w-full max-w-4xl gap-5 px-4 py-8">
+        <section class="mx-auto flex flex-col w-full max-w-4xl gap-5 px-4 pt-8 pb-16">
             <div class="flex items-center justify-center">${cloudMsg}</div>
 
             <!-- Overview Card -->
@@ -946,8 +976,8 @@ function renderResult() {
                         <i data-lucide="${overallState.config.icon}" class="h-7 w-7" style="color:${overallState.config.hex};"></i>
                     </div>
                     <p class="text-slate-500 font-semibold text-sm">Trạng thái tinh thần tổng quát</p>
-                    <p class="text-4xl md:text-5xl font-black mt-1" style="color:${overallState.config.hex};">${overallState.config.label}</p>
-                    <p class="mt-2 text-sm font-semibold text-slate-500">${getClosingLine(overallState.config.label)}</p>
+                    <p class="inline-flex items-center justify-center mt-2 px-5 py-1.5 rounded-full text-3xl md:text-4xl font-black" style="background:${overallState.config.hex}1A;color:${overallState.config.hex};">${overallState.config.label}</p>
+                    <p class="mt-3 text-sm font-semibold text-slate-500">${getClosingLine(overallState.config.label)}</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                     ${renderGaugeBar('Tinh thần tổng quát', overallState.config.label)}
@@ -957,7 +987,7 @@ function renderResult() {
                     <i data-lucide="lightbulb" class="h-4 w-4 shrink-0 mt-0.5" style="color:${adviceColor};"></i>
                     <div>
                         <p class="text-xs font-black mb-1" style="color:${adviceColor};">Lời khuyên</p>
-                        <p class="text-xs leading-5 text-slate-600">${getAdvice(adviceLabel)}</p>
+                        <p class="text-xs leading-5 text-slate-600">${getAdvice(adviceScale, adviceLabel)}</p>
                     </div>
                 </div>
             </div>
@@ -1024,7 +1054,14 @@ function renderResult() {
                     </div>
                 </div>
                 <div class="collapse-body ${collapseState.dass ? 'open' : ''}" id="collapse-dass">
-                    <div class="chart-wrap h-48 mb-5 mt-1"><canvas id="dassBarChart"></canvas></div>
+                    <div class="chart-wrap h-48 mb-3 mt-1"><canvas id="dassBarChart"></canvas></div>
+                    <!-- Chú thích thang màu: phải khớp đúng 4 mức hex trong getLevelConfig() -->
+                    <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mb-5">
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#10B981;"></span>Tốt</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#0ea8f0;"></span>Nhẹ</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#F59E0B;"></span>Vừa</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:#F43F5E;"></span>Nặng / Rất nặng</span>
+                    </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pb-2">${dassHTML}</div>
                 </div>
             </div>
@@ -1066,7 +1103,7 @@ function renderResult() {
             </div>
 
             <!-- Reset Button -->
-            <div class="flex justify-center pb-4">
+            <div class="flex justify-center pt-3 pb-10">
                 <button type="button" onclick="handleReset()" class="btn-primary">
                     <i data-lucide="rotate-ccw" class="h-5 w-5"></i><span>Làm lại khảo sát</span>
                 </button>
@@ -1096,12 +1133,14 @@ function renderHistorySection(history) {
         const cellsHTML = miniRows.map(row => {
             const cfg = getLevelConfig(row.id, row.v);
             const prevV = prev ? prev.scores[row.id] : null;
-            const trend = getTrend(row.v, prevV);
+            // Nhân đôi (DASS-21 -> DASS-42) để mức chênh lệch hiển thị đúng đơn vị với
+            // điểm x/42 đang hiển thị ở các thẻ khác trong trang (tránh vênh đơn vị điểm thô vs điểm quy đổi).
+            const trend = getTrend(row.v * 2, prevV !== null ? prevV * 2 : null);
             let trendHtml = '';
             if (trend && trend.dir !== 'same') {
                 const isBetter = row.lowerBetter ? trend.dir === 'down' : trend.dir === 'up';
                 const tColor = isBetter ? '#10B981' : '#F43F5E';
-                trendHtml = `<span style="color:${tColor}; font-size:9px; font-weight:900;">${trend.dir === 'up' ? '↑' : '↓'}${Math.abs(row.v - prevV)}</span>`;
+                trendHtml = `<span style="color:${tColor}; font-size:9px; font-weight:900;">${trend.dir === 'up' ? '↑' : '↓'}${Math.abs((row.v - prevV) * 2)}</span>`;
             }
             return `<div class="text-center">
                 <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">${row.label}</p>
@@ -1250,12 +1289,21 @@ function initDonutChart() {
     const labelEl = document.getElementById('donutCenterLabel');
     if (labelEl) { labelEl.textContent = isSafe ? 'An toàn' : mbiLvl.label; labelEl.style.color = isSafe ? safeColor : mbiLvl.hex; }
 
-    // Mỗi tiểu mục chuẩn hoá theo khung điểm riêng (30/24/36), nặng 1/3 như nhau trong tổng 100%
-    // — khớp đúng với cách getMbiRiskPct() ở trên tính ra riskPct.
-    const exhPct = isSafe ? 0 : Math.round((exhaustion / 30) * 100 / 3);
-    const cynPct = isSafe ? 0 : Math.round((cynicism / 24) * 100 / 3);
-    const lowPct = isSafe ? 0 : Math.round((lowEfficacy / 36) * 100 / 3);
-    const safePct = 100 - exhPct - cynPct - lowPct;
+    // Phân mảnh donut: mỗi tiểu mục chiếm đúng % rủi ro của chính nó (không chia 3).
+    // Trước đây chia /3 (công thức trung bình) khiến khi chỉ 1 tiểu mục max thì donut
+    // chỉ tô 33% nguy cơ dù riskPct tổng = 100% — không khớp với số to ở giữa.
+    // Giờ dùng: mỗi tiểu mục = % riêng của nó, "Chưa ảnh hưởng" = phần còn lại tới 100%.
+    const exhRaw  = Math.round((exhaustion / 30) * 100);
+    const cynRaw  = Math.round((cynicism / 24) * 100);
+    const lowRaw  = Math.round((lowEfficacy / 36) * 100);
+    // Lấy tiểu mục có % cao nhất làm "chỉ huy" — khớp đúng với getMbiRiskPct() dùng MAX
+    const maxRaw  = Math.max(exhRaw, cynRaw, lowRaw);
+    // Phân bổ mảnh theo tỷ lệ của từng tiểu mục trong tổng nguy cơ
+    // (nếu maxRaw=0 tức isSafe — đã xử lý riêng ở trên, không vào đây)
+    const exhPct = isSafe ? 0 : Math.round((exhRaw / (exhRaw + cynRaw + lowRaw || 1)) * riskPct);
+    const cynPct = isSafe ? 0 : Math.round((cynRaw / (exhRaw + cynRaw + lowRaw || 1)) * riskPct);
+    const lowPct = isSafe ? 0 : Math.max(0, riskPct - exhPct - cynPct);
+    const safePct = Math.max(0, 100 - exhPct - cynPct - lowPct);
 
     const legendEl = document.getElementById('donutLegend');
     if (legendEl) {
@@ -1557,7 +1605,7 @@ function renderAdminPage() {
             <div style="max-width:1280px;margin:0 auto;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#0D3348,#1e5a7a);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i data-lucide="shield-check" style="width:20px;height:20px;color:#fff;"></i>
+                        <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:34px;height:34px;object-fit:cover;border-radius:8px;">
                     </div>
                     <div>
                         <h1 style="font-size:1rem;font-weight:900;color:#1e293b;margin:0;line-height:1.2;">Admin</h1>
