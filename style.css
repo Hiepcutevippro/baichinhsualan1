@@ -48,6 +48,10 @@ body {
     margin: 0;
     min-height: 100vh;
     background: var(--brand-surface);
+    /* viewport-fit=cover (index.html) khiến nội dung vẽ tràn xuống vùng an toàn của màn hình
+       (tai thỏ / thanh cử chỉ ở đáy máy). Thêm padding này để nút/biểu đồ ở cuối trang
+       (vd. nút "Làm lại khảo sát") luôn có khoảng trống, không bị hệ điều hành che mất. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ===== GRADIENTS ===== */
@@ -360,16 +364,14 @@ body {
     position: relative;
     width: 100%;
     max-width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+    overflow: visible;
 }
 
-.chart-wrap>canvas {
+.chart-wrap canvas {
     display: block;
     width: 100%;
     height: 100%;
+    max-width: 100%;
 }
 
 #dassBarChart {
@@ -387,18 +389,6 @@ body {
 #communityDassChart {
     min-height: 160px !important;
     height: 160px !important;
-}
-
-.chart-wrap {
-    position: relative !important;
-    display: block !important;
-    width: 100% !important;
-    overflow: visible !important;
-}
-
-.chart-wrap canvas {
-    display: block !important;
-    max-width: 100% !important;
 }
 
 /* ===== RESULT PAGE ===== */
