@@ -128,8 +128,8 @@ let isSubmitting = false; // true trong lúc đang gửi bài — chặn bấm "
 function getSavedCredentials() {
     try { return JSON.parse(localStorage.getItem('mh_saved_creds') || 'null'); } catch { return null; }
 }
-function saveCredentials(email, password) {
-    localStorage.setItem('mh_saved_creds', JSON.stringify({ email, password }));
+function saveCredentials(email) {
+    localStorage.setItem('mh_saved_creds', JSON.stringify({ email }));
 }
 function clearSavedCredentials() {
     localStorage.removeItem('mh_saved_creds');
@@ -222,7 +222,7 @@ async function handleAuthSubmit(e) {
             }
         }
 
-        if (rememberMe) { saveCredentials(email, password); }
+        if (rememberMe) { saveCredentials(email); }
         else { clearSavedCredentials(); }
 
         step = 'start';
@@ -349,7 +349,7 @@ async function submitChangePassword() {
             localStorage.setItem('mental_health_users', JSON.stringify(localUsersDb));
         }
         const saved = getSavedCredentials();
-        if (saved && saved.email === currentUser.email) saveCredentials(currentUser.email, newPassword);
+        if (saved && saved.email === currentUser.email) saveCredentials(currentUser.email);
         showSuc('Đổi mật khẩu thành công!');
         if (btn) { btn.disabled = false; btn.innerHTML = 'Cập nhật mật khẩu <i data-lucide="check-circle" style="width:18px;height:18px;"></i>'; lucide.createIcons(); }
         setTimeout(() => closeChangePasswordModal(), 1800);
@@ -495,13 +495,13 @@ function getOverallMentalState(scores) {
     return configs.reduce((worst, cur) => severityRank(cur.config.label) > severityRank(worst.config.label) ? cur : worst);
 }
 function getMbiRiskPct(scores) {
-    // Các tiểu mục đều được biểu diễn theo cùng một chiều: điểm càng cao thì
-    // mức dấu hiệu/rủi ro càng cao. Dùng trung bình để một tiểu mục không thể
-    // tự mình biến toàn bộ kết quả thành 100%.
+    // Kiệt quệ và hoài nghi là nhóm rủi ro: điểm càng cao thì nguy cơ càng cao.
+    // Hiệu quả học tập là nhóm tích cực: điểm càng cao thì nguy cơ càng thấp.
+    // Dùng trung bình chuẩn hóa để một tiểu mục không tự biến toàn bộ kết quả thành 100%.
     const exhPct = (scores.emotionalExhaustion / 30) * 100;
     const cynPct = (scores.cynicism / 24) * 100;
-    const efficacyPct = (scores.academicEfficacy / 36) * 100;
-    return Math.round((exhPct + cynPct + efficacyPct) / 3);
+    const lowEfficacyPct = (Math.max(0, 36 - scores.academicEfficacy) / 36) * 100;
+    return Math.round((exhPct + cynPct + lowEfficacyPct) / 3);
 }
 function getMbiLevelConfig(riskPct) {
     let label = 'Tốt';
@@ -614,8 +614,8 @@ function renderAuth() {
             <div class="w-full max-w-md">
                 <!-- Logo card -->
                 <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-20 h-20 rounded-[22px] shadow-xl mb-4" style="background:linear-gradient(135deg,#4F8EC9,#42C8A8);">
-                        <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:68px;height:68px;object-fit:cover;border-radius:14px;">
+                    <div class="brand-mark brand-mark-large inline-flex items-center justify-center rounded-[22px] shadow-xl mb-4" aria-label="Logo THPT Gia Lộc">
+                        <img class="school-logo school-logo-large" src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="Logo THPT Gia Lộc">
                     </div>
                     <h1 class="text-3xl font-black text-slate-800 tracking-tight">THPT Gia Lộc</h1>
                     <p class="text-sm text-slate-500 font-semibold mt-1">Khảo sát sức khỏe tâm lý học đường</p>
@@ -655,7 +655,7 @@ function renderAuth() {
                             <div class="password-wrapper">
                                 <input type="password" id="passwordInput" name="password" required minlength="6" 
                                     placeholder="Tối thiểu 6 ký tự"
-                                    value="${isLogin && saved ? saved.password : ''}"
+                                    value=""
                                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                                 <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility()" id="pwToggleBtn" aria-label="Hiển thị hoặc ẩn mật khẩu">
                                     <i data-lucide="eye-off" class="w-5 h-5" id="pwToggleIcon"></i>
@@ -737,8 +737,8 @@ function renderHeader() {
         <header class="site-header sticky top-0 z-40">
             <div class="mx-auto w-full max-w-6xl px-4 md:px-6 py-3 flex items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <div class="flex items-center justify-center rounded-xl shadow-md shrink-0" style="width:52px;height:52px;background:linear-gradient(135deg,#4F8EC9,#42C8A8);">
-                        <img src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="logo" style="width:44px;height:44px;object-fit:cover;border-radius:8px;">
+                    <div class="brand-mark flex items-center justify-center rounded-xl shadow-md shrink-0" aria-label="Logo THPT Gia Lộc">
+                        <img class="school-logo school-logo-small" src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="Logo THPT Gia Lộc">
                     </div>
                     <div>
                         <h1 class="text-base md:text-xl font-black tracking-tight text-slate-800">THPT Gia Lộc</h1>
@@ -766,17 +766,17 @@ function renderStart() {
         </div>` : '';
 
     return `
-        <div class="w-full flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] bg-brand-surface px-4 py-10">
+        <div class="start-page w-full flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] bg-brand-surface px-4 py-10">
             <section class="mx-auto flex flex-col items-center text-center w-full max-w-4xl">
                 <div class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-5 py-2 text-sm font-bold text-blue-600 shadow-sm mb-6">
                     <i data-lucide="shield-check" class="h-4 w-4 text-emerald-500"></i>
-                    <span>Chuẩn y tế DASS-21 · MBI-SS</span>
+                    <span>DASS-21 · MBI-SS · Sàng lọc</span>
                 </div>
                 <h2 class="text-4xl md:text-5xl font-black leading-tight tracking-tight text-slate-800 mb-3">
                     Khảo Sát <span class="brand-gradient-text">Tâm Lý Học Đường</span>
                 </h2>
-                <p class="text-slate-500 font-medium max-w-lg text-base mx-auto text-justify">
-                    Hệ thống đánh giá chuyên sâu giúp bạn hiểu rõ mức độ Căng thẳng, Lo âu, Trầm cảm và Kiệt quệ. Một khảo sát tâm lý học đường mạch lạc, ẩn danh, sử dụng nền tảng thang đo chuẩn hoá quốc tế DASS-21 và MBI-SS, kết hợp cùng các chỉ số kiểm định dữ liệu độc lập để đảm bảo tính khách quan.
+                <p class="text-slate-500 font-medium max-w-lg text-base mx-auto text-left">
+                    Hệ thống đánh giá giúp bạn theo dõi Căng thẳng, Lo âu, Trầm cảm và mức độ quá tải học tập. DASS-21 sử dụng trải nghiệm trong 7 ngày gần nhất; MBI-SS dựa trên cảm nhận học tập gần đây. Kết quả chỉ có giá trị sàng lọc và không thay thế tư vấn hoặc chẩn đoán chuyên môn.
                 </p>
             
 
@@ -793,6 +793,9 @@ function renderStart() {
                     </div>
                 </div>
                 <p class="mt-4 text-sm font-bold text-slate-500">Thời gian hoàn thành dự kiến: <span class="font-black text-slate-700">4 – 5 phút</span></p>
+                <p class="mt-3 max-w-lg text-left text-xs leading-5 text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    Đây là công cụ sàng lọc giáo dục, không phải chẩn đoán y khoa. Nếu kết quả ở mức cao hoặc bạn cảm thấy không an toàn, hãy nói với người lớn đáng tin cậy và liên hệ chuyên viên tâm lý.
+                </p>
 
                 ${historyHtml}
 
@@ -839,7 +842,7 @@ function renderMiniHistory(latest, prev) {
                 ${prev ? renderTrendBadge(latest.scores.depression * 2, prev.scores.depression * 2, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Tổng điểm MBI-SS</p>
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Chỉ số MBI-SS tham khảo</p>
                 <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
             </div>
         </div>
@@ -911,7 +914,7 @@ function renderResult() {
     const MBI_ROWS = [
         { id: 'emotionalExhaustion', title: 'Kiệt quệ cảm xúc', max: 30 },
         { id: 'cynicism', title: 'Hoài nghi', max: 24 },
-        { id: 'academicEfficacy', title: 'Hiệu quả học tập', max: 36 }
+        { id: 'academicEfficacy', title: 'Hiệu quả học tập', max: 36, higherBetter: true }
     ];
     const DASS_ROWS = [
         { id: 'stress', title: 'Stress', max: 42 },
@@ -925,13 +928,9 @@ function renderResult() {
     // true khi cả 15 câu MBI-SS thật được trả lời CÙNG 1 mức (vd. toàn "Không bao giờ") —
     // xem isMbiAnswerFlat() để biết vì sao trường hợp này luôn kéo 1 tiểu mục lên mức cao nhất.
     const mbiFlatAnswer = isMbiAnswerFlat(answers);
-    // Khi trả lời một màu (mbiFlatAnswer = true), số MBI-SS không đủ tin cậy để lấn át một kết
-    // quả DASS-21 đáng tin trên banner tổng quan — coi như CHƯA CÓ tín hiệu tổng điểm MBI-SS để so sánh,
-    // dùng thẳng overallState (DASS-21) cho banner. Số MBI-SS thật (mbiLevel/mbiRiskPct) vẫn
-    // hiển thị đúng và đầy đủ ở 2 nơi bên dưới (thanh gauge riêng + thẻ Tổng điểm MBI-SS chi tiết), kèm
-    // ghi chú giải thích — chỉ riêng BANNER TỔNG QUAN là không để 1 lần trả lời qua loa kéo xuống
-    // mức nặng, tránh lặp lại đúng lỗi "DASS-21 tốt nhưng banner vẫn báo rất nặng".
-    const mbiCountsForBanner = !mbiFlatAnswer && severityRank(mbiLevel.label) > severityRank(overallState.config.label);
+    // MBI-SS không có tổng điểm chuẩn hoặc ngưỡng chẩn đoán chung. Chỉ dùng
+    // DASS-21 cho trạng thái tổng quan; ba tiểu mục MBI-SS được trình bày riêng.
+    const mbiCountsForBanner = false;
     const adviceLabel = mbiCountsForBanner ? mbiLevel.label : overallState.config.label;
     // Thẻ nào (burnout hay đúng thang DASS đang tệ nhất: stress/anxiety/depression) quyết định adviceLabel
     // thì dùng đúng văn bản lời khuyên của thẻ đó, tránh lặp lại lỗi copy-paste như trên.
@@ -954,36 +953,43 @@ function renderResult() {
     const mbiHTML = MBI_ROWS.map(row => {
         const val = currentScores[row.id];
         const pct = Math.round((val / row.max) * 100);
-        const riskPct = pct;
-        const color = riskPct >= 60 ? '#F43F5E' : riskPct >= 30 ? '#F59E0B' : '#10B981';
+        const riskPct = row.higherBetter ? 100 - pct : pct;
+        const barPct = row.higherBetter ? pct : riskPct;
+        const color = row.higherBetter
+            ? (pct >= 60 ? '#10B981' : pct >= 30 ? '#F59E0B' : '#F43F5E')
+            : (riskPct >= 60 ? '#F43F5E' : riskPct >= 30 ? '#F59E0B' : '#10B981');
         return `<div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
             <div class="flex items-center justify-between mb-2">
                 <div>
                     <span class="text-xs font-black text-slate-600">${row.title}</span>
-                    
+                    ${row.higherBetter ? `<div class="mt-1"><span class="score-badge" style="background:#FFF7ED;color:#B45309;"><i data-lucide="info" class="w-3 h-3"></i>Điểm cao = hiệu quả tốt; điểm thấp = dễ mất hiệu quả</span></div>` : ''}
                 </div>
                 <span class="font-mono text-base font-black" style="color:${color};">${val}<span class="text-xs text-slate-400 font-semibold">/${row.max}</span></span>
             </div>
             <div class="h-2 rounded-full bg-slate-200 overflow-hidden">
-                <div class="h-full rounded-full" style="width:${riskPct}%; background:${color};"></div>
+                <div class="h-full rounded-full" style="width:${barPct}%; background:${color};"></div>
             </div>
         </div>`;
     }).join('');
 
-    // Tiểu mục nào đang "kéo" mức nguy cơ MBI-SS tổng lên cao nhất (khớp đúng công thức MAX
-    // trong getMbiRiskPct — xem giải thích ở đó). Khi CHỈ 1 tiểu mục ở mức cao còn 2 tiểu mục
+    // Tiểu mục nào đang "kéo" mức nguy cơ MBI-SS tổng lên cao nhất (khớp đúng công thức
+    // trung bình chuẩn hóa trong getMbiRiskPct — xem giải thích ở đó). Khi CHỈ 1 tiểu mục
+    // ở mức cao còn 2 tiểu mục
     // kia vẫn tốt, hiển thị thêm dòng giải thích lý do, tránh cảm giác "kết quả vô lý/sai điểm"
     // (vd. Kiệt quệ 0/30 và Hoài nghi 0/24 rất tốt, nhưng tổng thể vẫn "Rất nặng" chỉ vì
     // Hiệu quả học tập 0/36 — tiểu mục này tính điểm NGƯỢC CHIỀU nên điểm thô thấp = rủi ro cao).
     // dòng 983–994
     const mbiSubRisks = MBI_ROWS.map(row => {
         const p = Math.round((currentScores[row.id] / row.max) * 100);
-        return { title: row.title, riskPct: p };
+        return { title: row.title, riskPct: row.higherBetter ? 100 - p : p };
     });
     const mbiTopDriver = mbiSubRisks.reduce((a, b) => (b.riskPct > a.riskPct ? b : a));
     const mbiOthersOk = mbiSubRisks.every(r => r === mbiTopDriver || r.riskPct < 45);
     const mbiDriverNote = (mbiRiskPct >= 45 && mbiOthersOk)
-        ? `/* ...markup khung chàm "Vì sao mức này cao?"... */`
+        ? `<div class="rounded-2xl border border-amber-200 bg-amber-50 p-3.5 flex gap-2.5 mb-3">
+                <i data-lucide="lightbulb" class="h-4 w-4 shrink-0 mt-0.5 text-amber-600"></i>
+                            <p class="text-[11px] leading-5 text-amber-900"><strong>Vì sao chỉ số tổng hợp cao?</strong> Nhóm <strong>${mbiTopDriver.title}</strong> đang đóng góp nhiều nhất vào mức nguy cơ MBI-SS. Hãy xem điểm từng nhóm bên dưới để biết phần nào cần được quan tâm.</p>
+            </div>`
         : '';
 
     // Cảnh báo riêng khi answers cho thấy học sinh bấm CÙNG 1 đáp án cho mọi câu MBI-SS thật.
@@ -992,7 +998,7 @@ function renderResult() {
     const mbiFlatNote = mbiFlatAnswer
         ? `<div class="rounded-2xl border border-amber-200 bg-amber-50 p-3.5 flex gap-2.5 mb-3">
                 <i data-lucide="alert-triangle" class="h-4 w-4 shrink-0 mt-0.5 text-amber-600"></i>
-                <p class="text-[11px] leading-5 text-amber-900"><strong>Lưu ý:</strong> Bạn đã chọn cùng một mức trả lời cho cả 15 câu ở phần này, nên mức tổng quan phía trên đang tạm <strong>không tính</strong> tổng điểm MBI-SS này (chỉ theo DASS-21). Số liệu bên dưới vẫn được tính đúng công thức và hiển thị đầy đủ để tham khảo, nhưng có thể chưa phản ánh đầy đủ cảm nhận thật. Nếu muốn, hãy <button type="button" onclick="handleReset()" class="underline font-black">làm lại khảo sát</button> và đọc kỹ từng câu nhé.</p>
+                <p class="text-[11px] leading-5 text-amber-900"><strong>Lưu ý:</strong> Bạn đã chọn cùng một mức trả lời cho cả 15 câu ở phần này, nên mức tổng quan phía trên đang tạm <strong>không tính</strong> chỉ số MBI-SS tham khảo này (chỉ theo DASS-21). Số liệu ba tiểu mục bên dưới vẫn được tính đầy đủ để tham khảo, nhưng có thể chưa phản ánh đầy đủ cảm nhận thật. Nếu muốn, hãy <button type="button" onclick="handleReset()" class="underline font-black">làm lại khảo sát</button> và đọc kỹ từng câu nhé.</p>
             </div>`
         : '';
 
@@ -1034,8 +1040,11 @@ function renderResult() {
     const historyHTML = renderHistorySection(history);
 
     return `
-        <section class="mx-auto flex flex-col w-full max-w-4xl gap-5 px-4 pt-8 pb-16">
-            <div class="flex items-center justify-center">${cloudMsg}</div>
+        <section class="result-page mx-auto flex flex-col w-full max-w-4xl gap-5 px-4 pt-8 pb-16">
+            <div class="flex flex-col items-center justify-center gap-2">
+                ${cloudMsg}
+                <p class="text-center text-[10px] leading-4 text-slate-400">Kết quả mang tính sàng lọc, không thay thế chẩn đoán y khoa.</p>
+            </div>
 
             <!-- Overview Card -->
             <div class="card-lg p-6 md:p-8">
@@ -1046,11 +1055,10 @@ function renderResult() {
                     <p class="text-slate-500 font-semibold text-sm">Trạng thái tinh thần tổng quát</p>
                     <p class="inline-flex items-center justify-center mt-2 px-5 py-1.5 rounded-full text-3xl md:text-4xl font-black" style="background:${adviceColor}1A;color:${adviceColor};">${adviceLabel}</p>
                     <p class="mt-3 text-sm font-semibold text-slate-500">${getClosingLine(adviceLabel)}</p>
-                    ${mbiFlatAnswer ? `<p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[11px] font-bold text-amber-700"><i data-lucide="alert-circle" class="w-3 h-3"></i>Phần tổng điểm MBI-SS chưa được tính vào mức này vì bạn chọn cùng 1 đáp án cho cả phần đó — xem số liệu riêng bên dưới</p>` : ''}
+                    ${mbiFlatAnswer ? `<p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[11px] font-bold text-amber-700"><i data-lucide="alert-circle" class="w-3 h-3"></i>Chỉ số MBI-SS tham khảo chưa được tính vào mức này vì bạn chọn cùng 1 đáp án cho cả phần đó — xem ba tiểu mục riêng bên dưới</p>` : ''}
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+                <div class="overview-dass mb-5">
                     ${renderGaugeBar('DASS-21 · Tâm lý chung', overallState.config.label)}
-                    ${renderGaugeBar('MBI-SS · Năng lượng học tập', mbiLevel.label)}
                 </div>
                 <div class="rounded-2xl border p-4 flex gap-3" style="border-color:${adviceColor}30; background:${adviceColor}0A;">
                     <i data-lucide="lightbulb" class="h-4 w-4 shrink-0 mt-0.5" style="color:${adviceColor};"></i>
@@ -1070,11 +1078,11 @@ function renderResult() {
                         </div>
                         <div>
                             <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kiệt quệ học đường</p>
-                            <h3 class="text-base font-black text-slate-800">Tổng điểm MBI-SS</h3>
+                            <h3 class="text-base font-black text-slate-800">Chỉ số tổng hợp MBI-SS</h3>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="score-badge hidden sm:inline-flex" style="background:${mbiLevel.hex}18; color:${mbiLevel.hex};">${mbiRiskPct}% nguy cơ</span>
+                        <span class="score-badge hidden sm:inline-flex" style="background:${mbiLevel.hex}18; color:${mbiLevel.hex};">${mbiRiskPct}% tham khảo</span>
                         <div class="collapse-icon ${collapseState.mbi ? 'open' : ''}" id="icon-mbi">
                             <i data-lucide="chevron-down" class="w-4 h-4"></i>
                         </div>
@@ -1083,7 +1091,8 @@ function renderResult() {
                 <div class="collapse-body ${collapseState.mbi ? 'open' : ''}" id="collapse-mbi">
                     <div class="grid grid-cols-1 md:grid-cols-[1fr_1.4fr] gap-5 pb-2">
                         <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 flex flex-col items-center gap-3">
-                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Mức độ nguy cơ</p>
+                            <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Chỉ số tổng hợp tham khảo</p>
+                            <p class="text-[10px] leading-4 text-center text-slate-400">MBI-SS được diễn giải chính theo 3 tiểu mục bên phải.</p>
                             <div class="relative" style="width:160px;height:160px;">
                                 <canvas id="donutChart" width="160" height="160" style="position:absolute;top:0;left:0;"></canvas>
                                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
@@ -1228,7 +1237,7 @@ function renderHistorySection(history) {
                             <span class="text-[10px] text-slate-400 ml-2">${timeStr}</span>
                             ${isLatest ? '<span class="ml-2 score-badge" style="background:#4F8EC918;color:#4F8EC9;">Mới nhất</span>' : ''}
                         </div>
-                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Tổng điểm ${mbiPct}%</span>
+                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Chỉ số tham khảo ${mbiPct}%</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">${cellsHTML}</div>
                 </div>
@@ -1342,7 +1351,7 @@ function initDonutChart() {
     const exhaustion = currentScores.emotionalExhaustion;
     const cynicism = currentScores.cynicism;
     const rawEfficacy = currentScores.academicEfficacy;
-    const lowEfficacy = rawEfficacy;
+    const lowEfficacy = Math.max(0, 36 - rawEfficacy);
     // Dùng chung getMbiRiskPct() (cùng công thức với bảng Admin, lịch sử khảo sát...)
     // thay vì tính lại % ở đây, để biểu đồ donut luôn khớp 100% với các nơi khác.
     const riskPct = getMbiRiskPct(currentScores);
@@ -1471,7 +1480,10 @@ function togglePasswordVisibility() {
 }
 
 // ===== ADMIN CONFIG =====
-const ADMIN_CREDENTIALS = { email: 'admin@gialoc.edu.vn', password: 'GiaLoc@Admin2025' };
+const ADMIN_CREDENTIALS = {
+    email: 'admin@gialoc.edu.vn',
+    passwordHash: '6cf838679df353a19558bbb0a4ea6db2b3cda4858a850976e408fa5bc70a244d'
+};
 let adminMode = false;
 let adminData = [];
 let adminLoading = false;
@@ -1479,12 +1491,13 @@ let adminSearch = '';
 let adminFilter = 'all';
 let adminSort = 'date_desc';
 
-function handleAdminLogin(e) {
+async function handleAdminLogin(e) {
     e.preventDefault();
     const fd = new FormData(e.target);
     const email = fd.get('adminEmail').trim();
     const password = fd.get('adminPassword');
-    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
+    const passwordHash = await hashPassword(password);
+    if (email === ADMIN_CREDENTIALS.email && passwordHash === ADMIN_CREDENTIALS.passwordHash) {
         adminMode = true;
         loadAdminData();
     } else {
@@ -1549,7 +1562,7 @@ function getAdminFilteredData() {
 
 function exportAdminCSV() {
     const data = getAdminFilteredData();
-    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức tổng điểm MBI-SS', 'Tổng điểm MBI-SS%'];
+    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức chỉ số MBI-SS', 'Chỉ số MBI-SS%'];
     const rows = data.map(r => {
         const mbi = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
         return [
@@ -1577,8 +1590,8 @@ function renderAdminPage() {
         <div class="min-h-screen flex items-center justify-center px-4 py-10 auth-bg">
             <div class="w-full max-w-sm">
                 <div class="text-center mb-8">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl shadow-lg mb-4" style="background:linear-gradient(135deg,#0D3348,#1e5a7a);">
-                        <i data-lucide="shield-check" style="width:28px;height:28px;color:#fff;"></i>
+                    <div class="brand-mark inline-flex items-center justify-center rounded-2xl shadow-lg mb-4" aria-label="Logo THPT Gia Lộc">
+                        <img class="school-logo school-logo-small" src="476607564_1118966020245066_3011246608916633901_n.jpg" alt="Logo THPT Gia Lộc">
                     </div>
                     <h1 class="text-2xl font-black text-slate-800">Trang Quản Trị</h1>
                     <p class="text-sm text-slate-500 font-semibold mt-1">THPT Gia Lộc - Cổng Quản Trị</p>
@@ -1669,12 +1682,12 @@ function renderAdminPage() {
         <p style="font-size:2rem;font-weight:900;color:${s.color};line-height:1;">${s.value}</p>
     </div>`).join('');
 
-    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Tổng điểm MBI-SS']].map(([v, l]) =>
+    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Chỉ số MBI-SS']].map(([v, l]) =>
         `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#64748b'};cursor:pointer;font-family:inherit;">${l}</button>`
     ).join('');
 
     root.innerHTML = `
-    <div class="min-h-screen" style="background:#F0F7FF;">
+    <div class="admin-page min-h-screen" style="background:#F0F7FF;">
         <header style="background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border-bottom:1px solid rgba(79,142,201,0.12);box-shadow:0 2px 16px rgba(79,142,201,0.07);position:sticky;top:0;z-index:40;">
             <div style="max-width:1280px;margin:0 auto;padding:0.75rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;">
                 <div style="display:flex;align-items:center;gap:0.75rem;">
@@ -1711,7 +1724,7 @@ function renderAdminPage() {
                         <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất trước</option>
                         <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất trước</option>
                         <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhất</option>
-                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Tổng điểm MBI-SS cao nhất</option>
+                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Chỉ số MBI-SS cao nhất</option>
                     </select>
                 </div>
                 <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hiển thị ${filtered.length} / ${total} kết quả ${adminFilter !== 'all' ? '(đã lọc)' : ''}</p>
@@ -1728,7 +1741,7 @@ function renderAdminPage() {
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Stress</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo âu</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Trầm cảm</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Tổng điểm MBI-SS</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Chỉ số MBI-SS</th>
                         </tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table></div>`}
