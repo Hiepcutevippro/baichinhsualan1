@@ -1659,11 +1659,11 @@ function renderAdminPage() {
             <td style="padding:10px 16px;font-size:12px;font-weight:700;color:#1e293b;white-space:nowrap;">
                 <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isAlert ? '#F43F5E' : '#10B981'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>${r.user_name || 'Ẩn danh'}
             </td>
-            <td style="padding:10px 16px;font-size:11px;color:#64748b;white-space:nowrap;">${dateStr}<br><span style="font-size:10px;color:#94a3b8;">${timeStr}</span></td>
-            <td style="padding:10px 16px;text-align:center;">${mkBadge(sL.label, sL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.stress || 0) * 2}/42</span></td>
-            <td style="padding:10px 16px;text-align:center;">${mkBadge(aL.label, aL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.anxiety || 0) * 2}/42</span></td>
-            <td style="padding:10px 16px;text-align:center;">${mkBadge(dL.label, dL.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${(r.depression || 0) * 2}/42</span></td>
-            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiLvl.label, mbiLvl.hex)}<br><span style="font-size:10px;color:#94a3b8;font-weight:600;">${mbiPct}% nguy cơ</span><br><span style="font-size:9px;color:#cbd5e1;font-weight:700;" title="3 tiểu mục MBI-SS — độc lập với điểm DASS-21 (Stress/Lo âu/Trầm cảm)">KQ ${r.emotional_exhaustion || 0}/30 · HN ${r.cynicism || 0}/24 · HQ ${r.academic_efficacy || 0}/36</span></td>
+            <td style="padding:10px 16px;font-size:11px;color:#111827;white-space:nowrap;">${dateStr}<br><span style="font-size:10px;color:#111827;">${timeStr}</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(sL.label, sL.hex)}<br><span style="font-size:10px;color:#111827;font-weight:600;">${(r.stress || 0) * 2}/42</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(aL.label, aL.hex)}<br><span style="font-size:10px;color:#111827;font-weight:600;">${(r.anxiety || 0) * 2}/42</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(dL.label, dL.hex)}<br><span style="font-size:10px;color:#111827;font-weight:600;">${(r.depression || 0) * 2}/42</span></td>
+            <td style="padding:10px 16px;text-align:center;">${mkBadge(mbiLvl.label, mbiLvl.hex)}<br><span style="font-size:10px;color:#111827;font-weight:600;">${mbiPct}% nguy cơ</span><br><span style="font-size:9px;color:#111827;font-weight:700;" title="3 tiểu mục MBI-SS — độc lập với điểm DASS-21 (Stress/Lo âu/Trầm cảm)">KQ ${r.emotional_exhaustion || 0}/30 · HN ${r.cynicism || 0}/24 · HQ ${r.academic_efficacy || 0}/36</span></td>
         </tr>`;
     }).join('');
 
@@ -1674,7 +1674,7 @@ function renderAdminPage() {
         { label: 'TB Lo âu (DASS)', value: avgAnxiety, icon: 'heart', color: '#8B5CF6' }
     ].map(s => `<div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);padding:1.25rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
-            <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#94a3b8;">${s.label}</span>
+            <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.08em;color:#111827;">${s.label}</span>
             <div style="width:32px;height:32px;border-radius:10px;background:${s.color}18;display:flex;align-items:center;justify-content:center;">
                 <i data-lucide="${s.icon}" style="width:16px;height:16px;color:${s.color};"></i>
             </div>
@@ -1683,7 +1683,7 @@ function renderAdminPage() {
     </div>`).join('');
 
     const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Chỉ số MBI-SS']].map(([v, l]) =>
-        `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#64748b'};cursor:pointer;font-family:inherit;">${l}</button>`
+        `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#111827'};cursor:pointer;font-family:inherit;">${l}</button>`
     ).join('');
 
     root.innerHTML = `
@@ -1696,7 +1696,7 @@ function renderAdminPage() {
                     </div>
                     <div>
                         <h1 style="font-size:1rem;font-weight:900;color:#1e293b;margin:0;line-height:1.2;">Admin</h1>
-                        <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#94a3b8;margin:0;">THPT Gia Lộc - Quản Trị</p>
+                        <p style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#111827;margin:0;">THPT Gia Lộc - Quản Trị</p>
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
@@ -1720,38 +1720,38 @@ function renderAdminPage() {
                     </div>
                     <div style="display:flex;gap:5px;flex-wrap:wrap;">${filterBtns}</div>
                     <select onchange="adminSort=this.value;renderAdminPage();"
-                        style="padding:0.5rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:12px;font-weight:700;font-family:inherit;background:#F8FAFC;color:#475569;outline:none;cursor:pointer;">
+                        style="padding:0.5rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:12px;font-weight:700;font-family:inherit;background:#F8FAFC;color:#111827;outline:none;cursor:pointer;">
                         <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất trước</option>
                         <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất trước</option>
                         <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhất</option>
                         <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Chỉ số MBI-SS cao nhất</option>
                     </select>
                 </div>
-                <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hiển thị ${filtered.length} / ${total} kết quả ${adminFilter !== 'all' ? '(đã lọc)' : ''}</p>
+                <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#111827;">Hiển thị ${filtered.length} / ${total} kết quả ${adminFilter !== 'all' ? '(đã lọc)' : ''}</p>
             </div>
             <div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);overflow:hidden;">
                 ${adminLoading
-            ? `<div style="padding:4rem;text-align:center;"><p style="color:#94a3b8;font-weight:700;font-size:13px;">Đang tải dữ liệu...</p></div>`
+            ? `<div style="padding:4rem;text-align:center;"><p style="color:#111827;font-weight:700;font-size:13px;">Đang tải dữ liệu...</p></div>`
             : filtered.length === 0
-                ? `<div style="padding:4rem;text-align:center;color:#94a3b8;font-weight:700;font-size:14px;">Không có dữ liệu phù hợp.</div>`
+                ? `<div style="padding:4rem;text-align:center;color:#111827;font-weight:700;font-size:14px;">Không có dữ liệu phù hợp.</div>`
                 : `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
                         <thead><tr style="background:#F8FAFC;border-bottom:2px solid #E2E8F0;">
-                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Học sinh</th>
-                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;white-space:nowrap;">Thời gian</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Stress</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo âu</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Trầm cảm</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Chỉ số MBI-SS</th>
+                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;white-space:nowrap;">Học sinh</th>
+                            <th style="padding:12px 16px;text-align:left;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;white-space:nowrap;">Thời gian</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;">Stress</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;">Lo âu</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;">Trầm cảm</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;">Chỉ số MBI-SS</th>
                         </tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table></div>`}
             </div>
             <div style="background:#fff;border-radius:16px;border:1px solid rgba(79,142,201,0.1);padding:0.875rem 1.25rem;display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;">
-                <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#94a3b8;margin-right:4px;">Mức độ:</span>
+                <span style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#111827;margin-right:4px;">Mức độ:</span>
                 ${[['Tốt', '#10B981'], ['Nhẹ', '#4F8EC9'], ['Vừa', '#F59E0B'], ['Nặng', '#F43F5E'], ['Rất nặng', '#9F1239']].map(([l, c]) =>
                     `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:800;background:${c}18;color:${c};">${l}</span>`
                 ).join('')}
-                <span style="font-size:10px;color:#94a3b8;font-weight:600;margin-left:4px;">Vàng = cần chú ý | Xanh = tốt</span>
+                <span style="font-size:10px;color:#111827;font-weight:600;margin-left:4px;">Vàng = cần chú ý | Xanh = tốt</span>
             </div>
         </main>
     </div>`;
