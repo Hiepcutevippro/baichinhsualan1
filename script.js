@@ -1030,8 +1030,8 @@ function renderResult() {
     const cloudMsg = !supabaseReady
         ? '<span class="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500"><i data-lucide="save" class="w-3.5 h-3.5"></i> Đã lưu trên máy này</span>'
         : lastSaveOk
-            ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> Đã lưu lên Cloud</span>'
-            : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 text-xs font-bold text-amber-700"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Lưu Cloud thất bại — kết quả chỉ lưu tạm trên máy này</span>';
+            ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> Đã lưu</span>'
+            : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 text-xs font-bold text-amber-700"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Lưu thất bại — kết quả chỉ lưu tạm trên máy này</span>';
 
     const div = communityStats.count > 0 ? communityStats.count : 1;
 
