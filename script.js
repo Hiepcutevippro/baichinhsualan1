@@ -1481,8 +1481,8 @@ function togglePasswordVisibility() {
 
 // ===== ADMIN CONFIG =====
 const ADMIN_CREDENTIALS = {
-    email: 'admin@gialoc.edu.vn',
-    passwordHash: '6cf838679df353a19558bbb0a4ea6db2b3cda4858a850976e408fa5bc70a244d'
+    email: 'glthpt@gmail.com',
+    passwordHash: 'GiaLoc@Admin2025'
 };
 let adminMode = false;
 let adminData = [];
