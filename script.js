@@ -962,7 +962,7 @@ function renderResult() {
             <div class="flex items-center justify-between mb-2">
                 <div>
                     <span class="text-xs font-black text-slate-600">${row.title}</span>
-                    ${row.higherBetter ? `<div class="mt-1"><span class="score-badge" style="background:#FFF7ED;color:#B45309;"><i data-lucide="info" class="w-3 h-3"></i>Điểm cao = hiệu quả tốt; điểm thấp = dễ mất hiệu quả</span></div>` : ''}
+                    ${row.higherBetter ? `<div class="mt-1"><span class="score-badge" style="background:#FFF7ED;color:#B45309;"><i data-lucide="info" class="w-3 h-3"></i>Điểm càng thấp rủi ro càng cao</span></div>` : ''}
                 </div>
                 <span class="font-mono text-base font-black" style="color:${color};">${val}<span class="text-xs text-slate-400 font-semibold">/${row.max}</span></span>
             </div>
