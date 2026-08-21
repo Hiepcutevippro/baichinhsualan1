@@ -91,6 +91,19 @@ const DASS_DEPRESSION = ['dass-3', 'dass-5', 'dass-10', 'dass-13', 'dass-16', 'd
 const MBI_EMOTIONAL_EXHAUSTION = ['mbi-1', 'mbi-4', 'mbi-6', 'mbi-8', 'mbi-13'];
 const MBI_CYNICISM = ['mbi-2', 'mbi-9', 'mbi-10', 'mbi-12'];
 const MBI_ACADEMIC_EFFICACY = ['mbi-3', 'mbi-5', 'mbi-7', 'mbi-11', 'mbi-14', 'mbi-15'];
+const MBI_ALL_REAL_IDS = [...MBI_EMOTIONAL_EXHAUSTION, ...MBI_CYNICISM, ...MBI_ACADEMIC_EFFICACY];
+// Phát hiện "trả lời một màu": chọn CÙNG 1 mức cho cả 15 câu MBI-SS thật (không tính 3 câu
+// kiểm định). Các câu MBI được quy đổi cùng chiều theo mức độ dấu hiệu được chọn,
+// vì vậy bất kỳ giá trị đồng nhất nào đều cần được kiểm tra riêng thay vì tự động kết luận
+// một tiểu mục có rủi ro cao.
+// (test/qua loa) chứ không phải phản hồi cân nhắc thật. Chỉ tính khi có đủ cả 15 câu trả lời
+// (an toàn khi answers rỗng/thiếu — vd. lúc renderResult chạy cho ngữ cảnh khác).
+function isMbiAnswerFlat(ansObj) {
+    if (!ansObj) return false;
+    const vals = MBI_ALL_REAL_IDS.map(id => ansObj[id]);
+    if (vals.some(v => v === undefined)) return false;
+    return new Set(vals).size === 1;
+}
 
 // ===== STATE =====
 let step = 'auth';
@@ -482,14 +495,13 @@ function getOverallMentalState(scores) {
     return configs.reduce((worst, cur) => severityRank(cur.config.label) > severityRank(worst.config.label) ? cur : worst);
 }
 function getMbiRiskPct(scores) {
-    // Dùng MAX thay vì trung bình cộng:
-    // Nếu bất kỳ 1 trong 3 tiểu mục nào đang ở mức nguy hiểm nhất thì % tổng phải phản ánh điều đó.
-    // Ví dụ: học sinh bị trầm cảm nặng → Kiệt quệ và Hoài nghi đều max
-    // → Hiệu quả học tập đương nhiên cũng bị kéo xuống → rủi ro 100%, không phải 67%.
+    // Các tiểu mục đều được biểu diễn theo cùng một chiều: điểm càng cao thì
+    // mức dấu hiệu/rủi ro càng cao. Dùng trung bình để một tiểu mục không thể
+    // tự mình biến toàn bộ kết quả thành 100%.
     const exhPct = (scores.emotionalExhaustion / 30) * 100;
     const cynPct = (scores.cynicism / 24) * 100;
-    const lowEffPct = (Math.max(0, 36 - scores.academicEfficacy) / 36) * 100;
-    return Math.round(Math.max(exhPct, cynPct, lowEffPct));
+    const efficacyPct = (scores.academicEfficacy / 36) * 100;
+    return Math.round((exhPct + cynPct + efficacyPct) / 3);
 }
 function getMbiLevelConfig(riskPct) {
     let label = 'Tốt';
@@ -504,6 +516,14 @@ function getGaugeBandColor(label) {
     if (label === 'Tốt') return '#10B981';
     if (label === 'Nặng' || label === 'Rất nặng') return '#F43F5E';
     return '#F59E0B';
+}
+// Icon dùng chung theo mức độ (khớp đúng bộ icon đã dùng trong getLevelConfig()),
+// tách riêng để renderResult() có thể dùng cho mức độ TỔNG HỢP (DASS-21 lẫn MBI-SS)
+// thay vì chỉ icon riêng của getLevelConfig (vốn chỉ nhận rawScore của MỘT thang DASS).
+function getIconForLabel(label) {
+    if (label === 'Tốt') return 'smile';
+    if (label === 'Nặng' || label === 'Rất nặng') return 'alert-triangle';
+    return 'meh';
 }
 const GAUGE_MARKER_POSITION = { 'Tốt': 16, 'Nhẹ': 41, 'Vừa': 58, 'Nặng': 75, 'Rất nặng': 92 };
 function getClosingLine(label) {
@@ -764,12 +784,12 @@ function renderStart() {
                     <div class="rounded-2xl border-[3px] border-blue-200 bg-white p-6 text-center shadow-md" style="box-shadow:0 4px 20px rgba(79,142,201,0.18);">
                         <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1.5" style="color:#4F8EC9; letter-spacing:0.18em;">DASS-21</p>
                         <p class="text-5xl font-black brand-gradient-text">21 câu</p>
-                        <p class="mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
+                        <p class="mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider" title="3 câu phụ dùng để kiểm tra độ tin cậy của phản hồi, không tính vào điểm số DASS-21">+ 3 câu kiểm định</p>
                     </div>
                     <div class="rounded-2xl border-[3px] border-teal-200 bg-white p-6 text-center shadow-md" style="box-shadow:0 4px 20px rgba(66,200,168,0.18);">
                         <p class="text-[13px] font-black uppercase tracking-[0.2em] mb-1.5" style="color:#42C8A8; letter-spacing:0.18em;">MBI-SS</p>
                         <p class="text-5xl font-black brand-gradient-text">15 câu</p>
-                        <p class="mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider">+ 3 câu kiểm định</p>
+                        <p class="mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider" title="3 câu phụ dùng để kiểm tra độ tin cậy của phản hồi, không tính vào điểm số MBI-SS">+ 3 câu kiểm định</p>
                     </div>
                 </div>
                 <p class="mt-4 text-sm font-bold text-slate-500">Thời gian hoàn thành dự kiến: <span class="font-black text-slate-700">4 – 5 phút</span></p>
@@ -819,7 +839,7 @@ function renderMiniHistory(latest, prev) {
                 ${prev ? renderTrendBadge(latest.scores.depression * 2, prev.scores.depression * 2, true) : ''}
             </div>
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Burnout</p>
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Tổng điểm MBI-SS</p>
                 <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
             </div>
         </div>
@@ -837,7 +857,11 @@ function renderQuiz() {
         let cls = 'nav-btn-default';
         if (currentIndex === idx) cls = 'nav-btn-active';
         else if (answers[item.id] !== undefined) cls = 'nav-btn-answered';
-        return `<button type="button" onclick="handleJump(${idx})" class="nav-btn w-full ${cls}"><span>${idx + 1}</span></button>`;
+        // Không lộ câu nào là "câu kiểm định" (isNoise) ra giao diện học sinh nữa — nếu học sinh
+        // biết trước câu nào không tính điểm thì các câu này sẽ mất tác dụng kiểm tra độ tin cậy
+        // phản hồi (dễ bị trả lời qua loa). Dữ liệu isNoise vẫn giữ nguyên trong QUESTIONS để
+        // dùng nội bộ (Admin), chỉ bỏ chấm tím + tooltip tiết lộ trên nav-grid.
+        return `<button type="button" onclick="handleJump(${idx})" class="nav-btn w-full ${cls}" title="Câu ${idx + 1}"><span>${idx + 1}</span></button>`;
     }).join('');
 
     const optionsHTML = q.scale.map(opt => {
@@ -887,7 +911,7 @@ function renderResult() {
     const MBI_ROWS = [
         { id: 'emotionalExhaustion', title: 'Kiệt quệ cảm xúc', max: 30 },
         { id: 'cynicism', title: 'Hoài nghi', max: 24 },
-        { id: 'academicEfficacy', title: 'Hiệu quả học tập', max: 36, higherBetter: true }
+        { id: 'academicEfficacy', title: 'Hiệu quả học tập', max: 36 }
     ];
     const DASS_ROWS = [
         { id: 'stress', title: 'Stress', max: 42 },
@@ -898,27 +922,45 @@ function renderResult() {
     const overallState = getOverallMentalState(currentScores);
     const mbiRiskPct = getMbiRiskPct(currentScores);
     const mbiLevel = getMbiLevelConfig(mbiRiskPct);
-    const adviceLabel = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? mbiLevel.label : overallState.config.label;
+    // true khi cả 15 câu MBI-SS thật được trả lời CÙNG 1 mức (vd. toàn "Không bao giờ") —
+    // xem isMbiAnswerFlat() để biết vì sao trường hợp này luôn kéo 1 tiểu mục lên mức cao nhất.
+    const mbiFlatAnswer = isMbiAnswerFlat(answers);
+    // Khi trả lời một màu (mbiFlatAnswer = true), số MBI-SS không đủ tin cậy để lấn át một kết
+    // quả DASS-21 đáng tin trên banner tổng quan — coi như CHƯA CÓ tín hiệu tổng điểm MBI-SS để so sánh,
+    // dùng thẳng overallState (DASS-21) cho banner. Số MBI-SS thật (mbiLevel/mbiRiskPct) vẫn
+    // hiển thị đúng và đầy đủ ở 2 nơi bên dưới (thanh gauge riêng + thẻ Tổng điểm MBI-SS chi tiết), kèm
+    // ghi chú giải thích — chỉ riêng BANNER TỔNG QUAN là không để 1 lần trả lời qua loa kéo xuống
+    // mức nặng, tránh lặp lại đúng lỗi "DASS-21 tốt nhưng banner vẫn báo rất nặng".
+    const mbiCountsForBanner = !mbiFlatAnswer && severityRank(mbiLevel.label) > severityRank(overallState.config.label);
+    const adviceLabel = mbiCountsForBanner ? mbiLevel.label : overallState.config.label;
     // Thẻ nào (burnout hay đúng thang DASS đang tệ nhất: stress/anxiety/depression) quyết định adviceLabel
     // thì dùng đúng văn bản lời khuyên của thẻ đó, tránh lặp lại lỗi copy-paste như trên.
-    const adviceScale = severityRank(mbiLevel.label) > severityRank(overallState.config.label) ? 'burnout' : overallState.id;
+    const adviceScale = mbiCountsForBanner ? 'burnout' : overallState.id;
     const adviceColor = getGaugeBandColor(adviceLabel);
+    const adviceIcon = getIconForLabel(adviceLabel);
+    // === FIX SAI LOGIC (banner "Tốt" nhưng vẫn cảnh báo) ===
+    // TRƯỚC ĐÂY: banner to ở đầu trang ("Trạng thái tinh thần tổng quát") chỉ lấy overallState
+    // -> tức CHỈ tính DASS-21 (Stress/Lo âu/Trầm cảm), không tính tổng điểm MBI-SS.
+    // Trong khi đó khung "Lời khuyên" ngay bên dưới lại lấy adviceLabel = mức NẶNG NHẤT giữa
+    // DASS-21 và MBI-SS. Hậu quả: học sinh có DASS-21 = "Tốt" nhưng tổng điểm MBI-SS = "Nặng" vẫn thấy
+    // banner to màu XANH ghi "Tốt", nhưng ngay dưới lại là khung màu ĐỎ/CAM với nội dung cảnh báo
+    // burnout -> hiển thị MÂU THUẪN ngay trên cùng 1 màn hình, đúng như lỗi "đạt mức tốt nhưng
+    // web vẫn cảnh báo". Nay banner tổng quan dùng CHUNG đúng 1 biến (adviceLabel/adviceColor/
+    // adviceIcon) với khung lời khuyên, để 2 khu vực không bao giờ "nói ngược nhau" nữa. Hai
+    // thanh gauge chi tiết bên dưới (DASS-21 và MBI-SS) vẫn giữ nguyên số liệu riêng của từng
+    // thang để học sinh biết chính xác điều gì đang kéo mức tổng quan xuống.
 
     // MBI cards
     const mbiHTML = MBI_ROWS.map(row => {
         const val = currentScores[row.id];
         const pct = Math.round((val / row.max) * 100);
-        // "Hiệu quả học tập" là tiểu mục NGƯỢC CHIỀU: điểm thô càng THẤP thì rủi ro càng CAO.
-        // Phải dùng riskPct (đảo chiều cho higherBetter) cho cả màu lẫn độ dài thanh bar —
-        // nếu dùng thẳng điểm thô (pct) thì 0/36 (tệ nhất) lại vẽ ra thanh RỖNG như thể
-        // an toàn nhất, khiến người xem tưởng "toàn số 0 = 0% rủi ro" (sai logic).
-        const riskPct = row.higherBetter ? 100 - pct : pct;
+        const riskPct = pct;
         const color = riskPct >= 60 ? '#F43F5E' : riskPct >= 30 ? '#F59E0B' : '#10B981';
         return `<div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
             <div class="flex items-center justify-between mb-2">
                 <div>
                     <span class="text-xs font-black text-slate-600">${row.title}</span>
-                    ${row.higherBetter ? `<div class="mt-1"><span class="score-badge" style="background:#F59E0B1F;color:#B45309;"><i data-lucide="info" class="w-3 h-3"></i>Điểm càng thấp, rủi ro càng cao</span></div>` : ''}
+                    
                 </div>
                 <span class="font-mono text-base font-black" style="color:${color};">${val}<span class="text-xs text-slate-400 font-semibold">/${row.max}</span></span>
             </div>
@@ -927,6 +969,32 @@ function renderResult() {
             </div>
         </div>`;
     }).join('');
+
+    // Tiểu mục nào đang "kéo" mức nguy cơ MBI-SS tổng lên cao nhất (khớp đúng công thức MAX
+    // trong getMbiRiskPct — xem giải thích ở đó). Khi CHỈ 1 tiểu mục ở mức cao còn 2 tiểu mục
+    // kia vẫn tốt, hiển thị thêm dòng giải thích lý do, tránh cảm giác "kết quả vô lý/sai điểm"
+    // (vd. Kiệt quệ 0/30 và Hoài nghi 0/24 rất tốt, nhưng tổng thể vẫn "Rất nặng" chỉ vì
+    // Hiệu quả học tập 0/36 — tiểu mục này tính điểm NGƯỢC CHIỀU nên điểm thô thấp = rủi ro cao).
+    // dòng 983–994
+    const mbiSubRisks = MBI_ROWS.map(row => {
+        const p = Math.round((currentScores[row.id] / row.max) * 100);
+        return { title: row.title, riskPct: p };
+    });
+    const mbiTopDriver = mbiSubRisks.reduce((a, b) => (b.riskPct > a.riskPct ? b : a));
+    const mbiOthersOk = mbiSubRisks.every(r => r === mbiTopDriver || r.riskPct < 45);
+    const mbiDriverNote = (mbiRiskPct >= 45 && mbiOthersOk)
+        ? `/* ...markup khung chàm "Vì sao mức này cao?"... */`
+        : '';
+
+    // Cảnh báo riêng khi answers cho thấy học sinh bấm CÙNG 1 đáp án cho mọi câu MBI-SS thật.
+    // Không thay đổi/ẩn số đã tính (vẫn tôn trọng câu trả lời thật nếu đúng là cảm nhận của các em)
+    // — chỉ thêm ngữ cảnh mời xem lại vì kiểu trả lời này có thể chưa phản ánh đầy đủ cảm nhận.
+    const mbiFlatNote = mbiFlatAnswer
+        ? `<div class="rounded-2xl border border-amber-200 bg-amber-50 p-3.5 flex gap-2.5 mb-3">
+                <i data-lucide="alert-triangle" class="h-4 w-4 shrink-0 mt-0.5 text-amber-600"></i>
+                <p class="text-[11px] leading-5 text-amber-900"><strong>Lưu ý:</strong> Bạn đã chọn cùng một mức trả lời cho cả 15 câu ở phần này, nên mức tổng quan phía trên đang tạm <strong>không tính</strong> tổng điểm MBI-SS này (chỉ theo DASS-21). Số liệu bên dưới vẫn được tính đúng công thức và hiển thị đầy đủ để tham khảo, nhưng có thể chưa phản ánh đầy đủ cảm nhận thật. Nếu muốn, hãy <button type="button" onclick="handleReset()" class="underline font-black">làm lại khảo sát</button> và đọc kỹ từng câu nhé.</p>
+            </div>`
+        : '';
 
     // DASS cards (compact)
     const dassHTML = DASS_ROWS.map(row => {
@@ -972,16 +1040,17 @@ function renderResult() {
             <!-- Overview Card -->
             <div class="card-lg p-6 md:p-8">
                 <div class="text-center mb-6">
-                    <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-3" style="background:${overallState.config.hex}1A;">
-                        <i data-lucide="${overallState.config.icon}" class="h-7 w-7" style="color:${overallState.config.hex};"></i>
+                    <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl mb-3" style="background:${adviceColor}1A;">
+                        <i data-lucide="${adviceIcon}" class="h-7 w-7" style="color:${adviceColor};"></i>
                     </div>
                     <p class="text-slate-500 font-semibold text-sm">Trạng thái tinh thần tổng quát</p>
-                    <p class="inline-flex items-center justify-center mt-2 px-5 py-1.5 rounded-full text-3xl md:text-4xl font-black" style="background:${overallState.config.hex}1A;color:${overallState.config.hex};">${overallState.config.label}</p>
-                    <p class="mt-3 text-sm font-semibold text-slate-500">${getClosingLine(overallState.config.label)}</p>
+                    <p class="inline-flex items-center justify-center mt-2 px-5 py-1.5 rounded-full text-3xl md:text-4xl font-black" style="background:${adviceColor}1A;color:${adviceColor};">${adviceLabel}</p>
+                    <p class="mt-3 text-sm font-semibold text-slate-500">${getClosingLine(adviceLabel)}</p>
+                    ${mbiFlatAnswer ? `<p class="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-[11px] font-bold text-amber-700"><i data-lucide="alert-circle" class="w-3 h-3"></i>Phần tổng điểm MBI-SS chưa được tính vào mức này vì bạn chọn cùng 1 đáp án cho cả phần đó — xem số liệu riêng bên dưới</p>` : ''}
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-                    ${renderGaugeBar('Tinh thần tổng quát', overallState.config.label)}
-                    ${renderGaugeBar('Năng lượng học tập', mbiLevel.label)}
+                    ${renderGaugeBar('DASS-21 · Tâm lý chung', overallState.config.label)}
+                    ${renderGaugeBar('MBI-SS · Năng lượng học tập', mbiLevel.label)}
                 </div>
                 <div class="rounded-2xl border p-4 flex gap-3" style="border-color:${adviceColor}30; background:${adviceColor}0A;">
                     <i data-lucide="lightbulb" class="h-4 w-4 shrink-0 mt-0.5" style="color:${adviceColor};"></i>
@@ -1001,7 +1070,7 @@ function renderResult() {
                         </div>
                         <div>
                             <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kiệt quệ học đường</p>
-                            <h3 class="text-base font-black text-slate-800">Burnout (MBI-SS)</h3>
+                            <h3 class="text-base font-black text-slate-800">Tổng điểm MBI-SS</h3>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -1024,7 +1093,7 @@ function renderResult() {
                             </div>
                             <div id="donutLegend" class="flex flex-col gap-1 w-full text-xs font-semibold text-slate-600"></div>
                         </div>
-                        <div class="space-y-3">${mbiHTML}</div>
+                        <div class="space-y-3">${mbiFlatNote}${mbiDriverNote}${mbiHTML}</div>
                     </div>
                 </div>
             </div>
@@ -1159,7 +1228,7 @@ function renderHistorySection(history) {
                             <span class="text-[10px] text-slate-400 ml-2">${timeStr}</span>
                             ${isLatest ? '<span class="ml-2 score-badge" style="background:#4F8EC918;color:#4F8EC9;">Mới nhất</span>' : ''}
                         </div>
-                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Burnout ${mbiPct}%</span>
+                        <span class="score-badge" style="background:${mbiLvl.hex}18; color:${mbiLvl.hex}; white-space:nowrap;">Tổng điểm ${mbiPct}%</span>
                     </div>
                     <div class="grid grid-cols-3 gap-2">${cellsHTML}</div>
                 </div>
@@ -1273,7 +1342,7 @@ function initDonutChart() {
     const exhaustion = currentScores.emotionalExhaustion;
     const cynicism = currentScores.cynicism;
     const rawEfficacy = currentScores.academicEfficacy;
-    const lowEfficacy = Math.max(0, 36 - rawEfficacy);
+    const lowEfficacy = rawEfficacy;
     // Dùng chung getMbiRiskPct() (cùng công thức với bảng Admin, lịch sử khảo sát...)
     // thay vì tính lại % ở đây, để biểu đồ donut luôn khớp 100% với các nơi khác.
     const riskPct = getMbiRiskPct(currentScores);
@@ -1293,16 +1362,21 @@ function initDonutChart() {
     // Trước đây chia /3 (công thức trung bình) khiến khi chỉ 1 tiểu mục max thì donut
     // chỉ tô 33% nguy cơ dù riskPct tổng = 100% — không khớp với số to ở giữa.
     // Giờ dùng: mỗi tiểu mục = % riêng của nó, "Chưa ảnh hưởng" = phần còn lại tới 100%.
-    const exhRaw  = Math.round((exhaustion / 30) * 100);
-    const cynRaw  = Math.round((cynicism / 24) * 100);
-    const lowRaw  = Math.round((lowEfficacy / 36) * 100);
+    const exhRaw = Math.round((exhaustion / 30) * 100);
+    const cynRaw = Math.round((cynicism / 24) * 100);
+    const lowRaw = Math.round((lowEfficacy / 36) * 100);
     // Lấy tiểu mục có % cao nhất làm "chỉ huy" — khớp đúng với getMbiRiskPct() dùng MAX
-    const maxRaw  = Math.max(exhRaw, cynRaw, lowRaw);
+    const maxRaw = Math.max(exhRaw, cynRaw, lowRaw);
     // Phân bổ mảnh theo tỷ lệ của từng tiểu mục trong tổng nguy cơ
     // (nếu maxRaw=0 tức isSafe — đã xử lý riêng ở trên, không vào đây)
-    const exhPct = isSafe ? 0 : Math.round((exhRaw / (exhRaw + cynRaw + lowRaw || 1)) * riskPct);
-    const cynPct = isSafe ? 0 : Math.round((cynRaw / (exhRaw + cynRaw + lowRaw || 1)) * riskPct);
-    const lowPct = isSafe ? 0 : Math.max(0, riskPct - exhPct - cynPct);
+    const totalRaw = exhRaw + cynRaw + lowRaw;
+    const exhPct = isSafe ? 0 : Math.round((exhRaw / (totalRaw || 1)) * riskPct);
+    const cynPct = isSafe ? 0 : Math.round((cynRaw / (totalRaw || 1)) * riskPct);
+    // Trước đây lowPct = riskPct - exhPct - cynPct (phần dư), nên khi lowRaw thực tế = 0
+    // nhưng exhPct/cynPct bị làm tròn hụt, phần dư đó bị gán nhầm hết cho "Mất hiệu quả HT"
+    // dù tiểu mục này không hề đóng góp vào rủi ro. Giờ tính lowPct theo đúng tỉ lệ lowRaw
+    // của chính nó, giống hệt cách tính exhPct/cynPct ở trên.
+    const lowPct = isSafe ? 0 : Math.round((lowRaw / (totalRaw || 1)) * riskPct);
     const safePct = Math.max(0, 100 - exhPct - cynPct - lowPct);
 
     const legendEl = document.getElementById('donutLegend');
@@ -1475,7 +1549,7 @@ function getAdminFilteredData() {
 
 function exportAdminCSV() {
     const data = getAdminFilteredData();
-    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức Burnout', 'Burnout%'];
+    const headers = ['Tên', 'Ngày', 'Stress', 'Lo âu', 'Trầm cảm', 'Mức Stress', 'Mức Lo âu', 'Mức Trầm cảm', 'Kiệt quệ CX', 'Hoài nghi', 'Hiệu quả HT', 'Mức tổng điểm MBI-SS', 'Tổng điểm MBI-SS%'];
     const rows = data.map(r => {
         const mbi = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
         return [
@@ -1595,7 +1669,7 @@ function renderAdminPage() {
         <p style="font-size:2rem;font-weight:900;color:${s.color};line-height:1;">${s.value}</p>
     </div>`).join('');
 
-    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Burnout']].map(([v, l]) =>
+    const filterBtns = [['all', 'Tất cả'], ['stress', 'Stress'], ['anxiety', 'Lo âu'], ['depression', 'Trầm cảm'], ['burnout', 'Tổng điểm MBI-SS']].map(([v, l]) =>
         `<button onclick="adminFilter='${v}';renderAdminPage();" style="padding:0.4rem 0.85rem;border-radius:99px;font-size:11px;font-weight:800;border:1.5px solid ${adminFilter === v ? '#4F8EC9' : '#E2E8F0'};background:${adminFilter === v ? '#EFF6FF' : 'transparent'};color:${adminFilter === v ? '#1D4ED8' : '#64748b'};cursor:pointer;font-family:inherit;">${l}</button>`
     ).join('');
 
@@ -1637,7 +1711,7 @@ function renderAdminPage() {
                         <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất trước</option>
                         <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất trước</option>
                         <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhất</option>
-                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Burnout cao nhất</option>
+                        <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Tổng điểm MBI-SS cao nhất</option>
                     </select>
                 </div>
                 <p style="margin-top:0.6rem;font-size:11px;font-weight:700;color:#94a3b8;">Hiển thị ${filtered.length} / ${total} kết quả ${adminFilter !== 'all' ? '(đã lọc)' : ''}</p>
@@ -1654,7 +1728,7 @@ function renderAdminPage() {
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Stress</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Lo âu</th>
                             <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Trầm cảm</th>
-                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Burnout</th>
+                            <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.1em;color:#64748b;">Tổng điểm MBI-SS</th>
                         </tr></thead>
                         <tbody>${tableRows}</tbody>
                     </table></div>`}
