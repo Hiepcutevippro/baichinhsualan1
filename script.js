@@ -1482,7 +1482,7 @@ function togglePasswordVisibility() {
 // ===== ADMIN CONFIG =====
 const ADMIN_CREDENTIALS = {
     email: 'glthpt@gmail.com',
-    passwordHash: 'GiaLoc@Admin2025'
+    password: 'GiaLoc@Admin2025'
 };
 let adminMode = false;
 let adminData = [];
@@ -1496,8 +1496,8 @@ async function handleAdminLogin(e) {
     const fd = new FormData(e.target);
     const email = fd.get('adminEmail').trim();
     const password = fd.get('adminPassword');
-    const passwordHash = await hashPassword(password);
-    if (email === ADMIN_CREDENTIALS.email && passwordHash === ADMIN_CREDENTIALS.passwordHash) {
+
+    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
         adminMode = true;
         loadAdminData();
     } else {
