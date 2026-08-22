@@ -347,6 +347,128 @@ body {
     vertical-align: middle;
 }
 
+/* ===== START PAGE — HISTORY COMPONENT ===== */
+/* Sparklines row */
+.start-history-sparks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+}
+
+.start-spark-item {
+    background: #F8FAFC;
+    border: 1px solid rgba(79, 142, 201, 0.10);
+    border-radius: 12px;
+    padding: 0.7rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Scrollable list of session cards */
+.start-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Single session card */
+.start-history-card {
+    background: #F8FAFC;
+    border: 1.5px solid rgba(79, 142, 201, 0.10);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.start-history-card:hover {
+    box-shadow: 0 4px 16px rgba(79, 142, 201, 0.12);
+    border-color: rgba(79, 142, 201, 0.25);
+}
+
+/* Latest card gets a subtle gradient border + slightly elevated look */
+.start-history-card--latest {
+    background: linear-gradient(135deg, rgba(79, 142, 201, 0.04) 0%, rgba(66, 200, 168, 0.04) 100%);
+    border-color: rgba(79, 142, 201, 0.25);
+    box-shadow: 0 2px 12px rgba(79, 142, 201, 0.10);
+}
+
+.start-history-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* 3-column grid for Stress / Lo âu / Trầm cảm */
+.start-history-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.55rem;
+}
+
+.start-history-cell {
+    background: #fff;
+    border: 1px solid rgba(79, 142, 201, 0.08);
+    border-radius: 10px;
+    padding: 0.65rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.start-history-action {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+
+.start-history-action .btn-primary {
+    min-width: 220px;
+    min-height: 58px;
+}
+
+.start-history-card-header .text-xs {
+    font-size: 0.85rem;
+}
+
+.start-history-card-header .text-\[10px\] {
+    font-size: 0.75rem;
+}
+
+.start-history-cell .text-\[8px\] {
+    font-size: 0.68rem;
+}
+
+.start-history-cell .score-badge,
+.start-history-card-header .score-badge {
+    font-size: 0.75rem !important;
+}
+
+.start-spark-item .text-\[9px\] {
+    font-size: 0.72rem;
+}
+
+@media (max-width: 480px) {
+    .start-history-sparks {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+    }
+
+    .start-history-metrics {
+        gap: 0.35rem;
+    }
+
+    .start-history-cell {
+        padding: 0.55rem 0.45rem;
+    }
+}
+
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
     width: 6px;
