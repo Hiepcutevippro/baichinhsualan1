@@ -153,16 +153,21 @@ function clearSavedCredentials() {
 function getHistoryKey(email) { return 'mh_history_' + btoa(email || 'incognito'); }
 
 function getUserHistory(email) {
-    return [];
+    try {
+        const history = JSON.parse(localStorage.getItem(getHistoryKey(email)) || '[]');
+        return Array.isArray(history) ? history : [];
+    } catch {
+        return [];
+    }
 }
 
 function saveToHistory(email, scores) {
-    // Kết quả sức khỏe tâm lý chỉ được lưu ở Supabase, không lưu trong browser.
+    const history = getUserHistory(email);
+    history.unshift({ date: new Date().toISOString(), scores: { ...scores } });
+    localStorage.setItem(getHistoryKey(email), JSON.stringify(history.slice(0, 10)));
 }
 
 // ===== COMMUNITY STATS =====
-localStorage.removeItem('mental_health_survey_v2');
-
 // ===== AUTH =====
 async function handleAuthSubmit(e) {
     e.preventDefault();
@@ -852,7 +857,7 @@ function renderQuiz() {
                     </button>
                     <span class="text-xs font-bold text-slate-400">${answeredCount}/${QUESTIONS.length} đã trả lời</span>
                     ${isLast
-            ? `<button type="button" onclick="handleSubmit()" ${(!allAnswered || isSubmitting) ? 'disabled' : ''} class="btn-primary disabled:opacity-50" style="border-radius:12px;padding:0.65rem 1.5rem;">
+            ? `<button type="button" onclick="submitSurvey()" ${(!allAnswered || isSubmitting) ? 'disabled' : ''} class="btn-primary disabled:opacity-50" style="border-radius:12px;padding:0.65rem 1.5rem;">
                             <span>${isSubmitting ? 'Đang nộp...' : 'Nộp bài'}</span><i data-lucide="check-circle" class="h-5 w-5"></i>
                            </button>`
             : `<button type="button" onclick="handleNext()" class="btn-primary" style="border-radius:12px;padding:0.65rem 1.5rem;">
@@ -1268,7 +1273,7 @@ function handleNext() { if (currentIndex < QUESTIONS.length - 1) { currentIndex+
 function handleJump(idx) { currentIndex = idx; renderApp(); }
 function handleAnswer(qId, val) { answers[qId] = val; renderApp(); }
 
-async function handleSubmit() {
+async function submitSurvey() {
     if (isSubmitting) return; // đang gửi rồi — bỏ qua các lần bấm/gọi thêm
     if (Object.keys(answers).length !== QUESTIONS.length) return;
     isSubmitting = true;
@@ -1283,6 +1288,9 @@ async function handleSubmit() {
     };
     try {
         await saveResult(currentScores);
+        if (currentUser && !currentUser.isIncognito) {
+            saveToHistory(currentUser.email, currentScores);
+        }
         await loadCommunityStats();
         step = 'result';
     } finally {
@@ -1291,6 +1299,9 @@ async function handleSubmit() {
     renderApp();
     window.scrollTo({ top: 0 });
 }
+
+// Compatibility alias for existing integrations that still call handleSubmit().
+const handleSubmit = submitSurvey;
 
 function handleReset() {
     answers = {}; currentIndex = 0; step = 'start';
