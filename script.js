@@ -515,7 +515,7 @@ function renderTrendBadge(curr, prev, lowerIsBetter = true) {
 // ===== SPARKLINE SVG =====
 function renderSparkline(values, color = '#4F8EC9', width = 80, height = 30) {
     if (values.length < 2) return '';
-    const max = Math.max(...values, 1);
+    const max = Math.max(...values);
     const min = Math.min(...values, 0);
     const range = max - min || 1;
     const pts = values.map((v, i) => {
@@ -747,14 +747,14 @@ function renderStart() {
                     Đây là công cụ sàng lọc giáo dục, không phải chẩn đoán y khoa. Nếu kết quả ở mức cao hoặc bạn cảm thấy không an toàn, hãy nói với người lớn đáng tin cậy và liên hệ chuyên viên tâm lý.
                 </p>
 
-                ${historyHtml}
-
-                <div class="mt-8">
+                <div class="start-history-action">
                     <button type="button" onclick="handleStart()" class="btn-primary text-lg px-12 py-4">
                         <span>Bắt đầu</span>
                         <i data-lucide="arrow-right" class="h-5 w-5"></i>
                     </button>
                 </div>
+
+                ${historyHtml}
             </section>
         </div>`;
 }
@@ -798,9 +798,9 @@ function renderStartHistory(history) {
         const mbiLvl = getMbiLevelConfig(mbiPct);
 
         const metrics = [
-            { key: 'stress',      label: 'Stress',     lowerBetter: true },
-            { key: 'anxiety',     label: 'Lo âu',      lowerBetter: true },
-            { key: 'depression',  label: 'Trầm cảm',   lowerBetter: true },
+            { key: 'stress', label: 'Stress', lowerBetter: true },
+            { key: 'anxiety', label: 'Lo âu', lowerBetter: true },
+            { key: 'depression', label: 'Trầm cảm', lowerBetter: true },
         ];
 
         const metricCells = metrics.map(m => {
