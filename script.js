@@ -1721,8 +1721,8 @@ function renderAdminPage() {
                     <div style="display:flex;gap:5px;flex-wrap:wrap;">${filterBtns}</div>
                     <select onchange="adminSort=this.value;renderAdminPage();"
                         style="padding:0.5rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:12px;font-weight:700;font-family:inherit;background:#F8FAFC;color:#111827;outline:none;cursor:pointer;">
-                        <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất trước</option>
-                        <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất trước</option>
+                        <option value="date_desc" ${adminSort === 'date_desc' ? 'selected' : ''}>Mới nhất</option>
+                        <option value="date_asc" ${adminSort === 'date_asc' ? 'selected' : ''}>Cũ nhất</option>
                         <option value="stress" ${adminSort === 'stress' ? 'selected' : ''}>Stress cao nhất</option>
                         <option value="burnout" ${adminSort === 'burnout' ? 'selected' : ''}>Chỉ số MBI-SS cao nhất</option>
                     </select>
