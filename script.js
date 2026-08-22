@@ -713,16 +713,7 @@ function renderHeader() {
 // ===== RENDER START =====
 function renderStart() {
     const history = currentUser && !currentUser.isIncognito ? getUserHistory(currentUser.email) : [];
-    const historyHtml = history.length > 0 ? `
-        <div class="w-full max-w-2xl mt-6">
-            <div class="card p-5">
-                <div class="flex items-center gap-2 mb-4">
-                    <i data-lucide="history" class="w-4 h-4 text-blue-500"></i>
-                    <span class="text-sm font-black text-slate-700 uppercase tracking-wider">Lần khảo sát gần nhất</span>
-                </div>
-                ${renderMiniHistory(history[0], history[1])}
-            </div>
-        </div>` : '';
+    const historyHtml = history.length > 0 ? renderStartHistory(history) : '';
 
     return `
         <div class="start-page w-full flex-1 flex items-center justify-center min-h-[calc(100vh-80px)] bg-brand-surface px-4 py-10">
@@ -768,44 +759,103 @@ function renderStart() {
         </div>`;
 }
 
-function renderMiniHistory(latest, prev) {
-    if (!latest) return '';
-    const d = new Date(latest.date);
-    const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const stressLabel = getLevelConfig('stress', latest.scores.stress).label;
-    const anxLabel = getLevelConfig('anxiety', latest.scores.anxiety).label;
-    const depLabel = getLevelConfig('depression', latest.scores.depression).label;
-    const mbiPct = getMbiRiskPct(latest.scores);
-    const mbiLvl = getMbiLevelConfig(mbiPct);
+// ===== RENDER START HISTORY (trang bắt đầu — tối đa 5 lần gần nhất) =====
+function renderStartHistory(history) {
+    if (!history || history.length === 0) return '';
+    const MAX_SHOW = 5;
+    const entries = history.slice(0, MAX_SHOW);
 
-    const badge = (label) => {
-        const c = getGaugeBandColor(label);
-        return `<span class="score-badge" style="background:${c}18;color:${c};">${label}</span>`;
-    };
+    // Sparklines xu hướng (chỉ khi có ≥2 lần)
+    const sparkSection = history.length >= 2 ? (() => {
+        const rev = history.slice(0, MAX_SHOW).slice().reverse();
+        const sVals = rev.map(e => e.scores.stress * 2);
+        const aVals = rev.map(e => e.scores.anxiety * 2);
+        const dVals = rev.map(e => e.scores.depression * 2);
+        return `<div class="start-history-sparks">
+            <div class="start-spark-item">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Xu hướng Stress</p>
+                ${renderSparkline(sVals, '#F43F5E', 90, 32)}
+            </div>
+            <div class="start-spark-item">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Xu hướng Lo âu</p>
+                ${renderSparkline(aVals, '#8B5CF6', 90, 32)}
+            </div>
+            <div class="start-spark-item">
+                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Xu hướng Trầm cảm</p>
+                ${renderSparkline(dVals, '#4F8EC9', 90, 32)}
+            </div>
+        </div>`;
+    })() : '';
+
+    // Cards từng lần
+    const cards = entries.map((entry, idx) => {
+        const prev = history[idx + 1];
+        const d = new Date(entry.date);
+        const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        const isLatest = idx === 0;
+        const mbiPct = getMbiRiskPct(entry.scores);
+        const mbiLvl = getMbiLevelConfig(mbiPct);
+
+        const metrics = [
+            { key: 'stress',      label: 'Stress',     lowerBetter: true },
+            { key: 'anxiety',     label: 'Lo âu',      lowerBetter: true },
+            { key: 'depression',  label: 'Trầm cảm',   lowerBetter: true },
+        ];
+
+        const metricCells = metrics.map(m => {
+            const cfg = getLevelConfig(m.key, entry.scores[m.key]);
+            const prevVal = prev ? prev.scores[m.key] : null;
+            let trendHtml = '';
+            if (prevVal !== null) {
+                const diff = (entry.scores[m.key] - prevVal) * 2;
+                if (diff !== 0) {
+                    const isBetter = m.lowerBetter ? diff < 0 : diff > 0;
+                    const tColor = isBetter ? '#10B981' : '#F43F5E';
+                    const arrow = diff > 0 ? '↑' : '↓';
+                    trendHtml = `<span style="color:${tColor};font-size:9px;font-weight:900;margin-left:3px;">${arrow}${Math.abs(diff)}</span>`;
+                }
+            }
+            return `<div class="start-history-cell">
+                <p class="text-[8px] font-black uppercase tracking-wider text-slate-400 mb-1">${m.label}</p>
+                <span class="score-badge" style="background:${cfg.hex}18;color:${cfg.hex};font-size:9px;">${cfg.label}</span>
+                ${trendHtml}
+            </div>`;
+        }).join('');
+
+        const dotColor = isLatest ? '#4F8EC9' : (idx === 1 ? '#7BB3E0' : '#CBD5E1');
+        return `<div class="start-history-card${isLatest ? ' start-history-card--latest' : ''}">
+            <div class="start-history-card-header">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0;"></span>
+                    <span class="text-xs font-black text-slate-700">${dateStr}</span>
+                    <span class="text-[10px] text-slate-400">${timeStr}</span>
+                    ${isLatest ? '<span class="score-badge" style="background:#4F8EC918;color:#4F8EC9;font-size:9px;">Mới nhất</span>' : ''}
+                </div>
+                <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};font-size:9px;white-space:nowrap;">MBI ${mbiPct}%</span>
+            </div>
+            <div class="start-history-metrics">${metricCells}</div>
+        </div>`;
+    }).join('');
+
+    const countLabel = history.length > MAX_SHOW
+        ? `${MAX_SHOW} / ${history.length} lần gần nhất`
+        : `${history.length} lần`;
 
     return `
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Stress</p>
-                ${badge(stressLabel)}
-                ${prev ? renderTrendBadge(latest.scores.stress * 2, prev.scores.stress * 2, true) : ''}
+    <div class="w-full max-w-2xl mt-6 text-left">
+        <div class="card p-5">
+            <div class="flex items-center justify-between gap-2 mb-4">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="clock-4" class="w-4 h-4 text-blue-500"></i>
+                    <span class="text-sm font-black text-slate-700 uppercase tracking-wider">Lịch sử khảo sát</span>
+                </div>
+                <span class="score-badge" style="background:#4F8EC918;color:#4F8EC9;">${countLabel}</span>
             </div>
-            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Lo âu</p>
-                ${badge(anxLabel)}
-                ${prev ? renderTrendBadge(latest.scores.anxiety * 2, prev.scores.anxiety * 2, true) : ''}
-            </div>
-            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Trầm cảm</p>
-                ${badge(depLabel)}
-                ${prev ? renderTrendBadge(latest.scores.depression * 2, prev.scores.depression * 2, true) : ''}
-            </div>
-            <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
-                <p class="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Chỉ số MBI-SS tham khảo</p>
-                <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
-            </div>
+            ${sparkSection}
+            <div class="start-history-list">${cards}</div>
         </div>
-        <p class="text-[10px] text-slate-400 font-semibold mt-3 text-right">Lần khảo sát: ${escapeHtml(dateStr)}</p>`;
+    </div>`;
 }
 
 // ===== RENDER QUIZ =====
