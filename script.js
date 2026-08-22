@@ -14,6 +14,20 @@ try {
     }
 } catch (err) { console.warn('Supabase:', err.message); }
 
+// Escape dữ liệu do người dùng nhập trước khi chèn vào innerHTML, chống XSS lưu trữ
+// (vd. tên học sinh hiển thị trong bảng Admin).
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+function csvCell(value) {
+    let text = String(value ?? '');
+    if (/^[=+\-@]/.test(text)) text = "'" + text;
+    return '"' + text.replace(/"/g, '""') + '"';
+}
+
 const THEME = { primary: '#4F8EC9', mint: '#42C8A8', dark: '#0D3348' };
 
 const MBI_SCALE = [
@@ -139,45 +153,15 @@ function clearSavedCredentials() {
 function getHistoryKey(email) { return 'mh_history_' + btoa(email || 'incognito'); }
 
 function getUserHistory(email) {
-    try { return JSON.parse(localStorage.getItem(getHistoryKey(email)) || '[]'); } catch { return []; }
+    return [];
 }
 
 function saveToHistory(email, scores) {
-    if (!email) return;
-    const key = getHistoryKey(email);
-    const history = getUserHistory(email);
-    history.unshift({
-        date: new Date().toISOString(),
-        scores: { ...scores }
-    });
-    // Keep last 20 records
-    const trimmed = history.slice(0, 20);
-    localStorage.setItem(key, JSON.stringify(trimmed));
+    // Kết quả sức khỏe tâm lý chỉ được lưu ở Supabase, không lưu trong browser.
 }
-
-// ===== LOCAL USERS DB =====
-let localUsersDb = JSON.parse(localStorage.getItem('mental_health_users') || '[]');
 
 // ===== COMMUNITY STATS =====
-try {
-    const saved = localStorage.getItem('mental_health_survey_v2');
-    if (saved) communityStats = JSON.parse(saved);
-} catch (e) { }
-
-// ===== AUTH UTILS =====
-async function hashPassword(password) {
-    const data = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-async function verifyLocalPassword(user, password) {
-    if (user.passwordHash) return user.passwordHash === await hashPassword(password);
-    return user.password === password;
-}
-async function setLocalPassword(user, password) {
-    user.passwordHash = await hashPassword(password);
-    delete user.password;
-}
+localStorage.removeItem('mental_health_survey_v2');
 
 // ===== AUTH =====
 async function handleAuthSubmit(e) {
@@ -191,35 +175,20 @@ async function handleAuthSubmit(e) {
     const rememberMe = fd.get('rememberMe') === 'on';
 
     try {
-        if (supabaseReady) {
-            if (authMode === 'register') {
-                const { data, error } = await db.auth.signUp({
-                    email, password,
-                    options: { data: { display_name: displayName || email.split('@')[0] } }
-                });
-                if (error) throw error;
-                currentUser = { id: data.user.id, name: displayName || email.split('@')[0], email, isIncognito: false };
-            } else {
-                const { data, error } = await db.auth.signInWithPassword({ email, password });
-                if (error) throw error;
-                currentUser = { id: data.user.id, name: data.user.user_metadata?.display_name || email.split('@')[0], email, isIncognito: false };
-            }
+        if (!supabaseReady) {
+            throw new Error('Không kết nối được máy chủ xác thực. Vui lòng thử lại sau.');
+        }
+        if (authMode === 'register') {
+            const { data, error } = await db.auth.signUp({
+                email, password,
+                options: { data: { display_name: displayName || email.split('@')[0] } }
+            });
+            if (error) throw error;
+            currentUser = { id: data.user.id, name: displayName || email.split('@')[0], email, isIncognito: false };
         } else {
-            if (authMode === 'register') {
-                const exists = localUsersDb.find(u => u.email === email);
-                if (exists) throw new Error('Email này đã được đăng ký!');
-                const newUser = { email, name: displayName || email.split('@')[0] };
-                await setLocalPassword(newUser, password);
-                localUsersDb.push(newUser);
-                localStorage.setItem('mental_health_users', JSON.stringify(localUsersDb));
-                currentUser = { id: null, name: newUser.name, email, isIncognito: false };
-            } else {
-                const user = localUsersDb.find(u => u.email === email);
-                if (!user) throw new Error('Sai email hoặc mật khẩu!');
-                const ok = await verifyLocalPassword(user, password);
-                if (!ok) throw new Error('Sai email hoặc mật khẩu!');
-                currentUser = { id: null, name: user.name, email, isIncognito: false };
-            }
+            const { data, error } = await db.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            currentUser = { id: data.user.id, name: data.user.user_metadata?.display_name || email.split('@')[0], email, isIncognito: false };
         }
 
         if (rememberMe) { saveCredentials(email); }
@@ -272,7 +241,7 @@ function showChangePasswordModal() {
                 </div>
                 <div>
                     <h3 style="font-size:1.1rem;font-weight:900;color:#0D3348;margin:0;line-height:1.2;">Đổi mật khẩu</h3>
-                    <p style="font-size:11px;color:#94a3b8;font-weight:600;margin:0;">${currentUser.email || ''}</p>
+                    <p style="font-size:11px;color:#94a3b8;font-weight:600;margin:0;">${escapeHtml(currentUser.email || '')}</p>
                 </div>
                 <button onclick="closeChangePasswordModal()" style="margin-left:auto;width:32px;height:32px;border-radius:8px;background:#f1f5f9;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;">
                     <i data-lucide="x" style="width:16px;height:16px;"></i>
@@ -283,7 +252,7 @@ function showChangePasswordModal() {
             <div style="margin-bottom:1rem;">
                 <label style="display:block;font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Mật khẩu mới</label>
                 <div class="password-wrapper">
-                    <input type="password" id="cpwNew" placeholder="Tối thiểu 6 ký tự" minlength="6"
+                    <input type="password" id="cpwNew" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự" minlength="6"
                         style="width:100%;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:0.75rem 3rem 0.75rem 1rem;font-size:14px;color:#1e293b;outline:none;font-family:inherit;"
                         oninput="this.style.borderColor='#4F8EC9'">
                     <button type="button" class="password-toggle-btn" onclick="toggleCpwVisibility('cpwNew','cpwNewIcon')" style="right:0.75rem;">
@@ -294,7 +263,7 @@ function showChangePasswordModal() {
             <div style="margin-bottom:1.5rem;">
                 <label style="display:block;font-size:10px;font-weight:900;color:#94a3b8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;">Xác nhận mật khẩu mới</label>
                 <div class="password-wrapper">
-                    <input type="password" id="cpwConfirm" placeholder="Nhập lại mật khẩu mới"
+                    <input type="password" id="cpwConfirm" autocomplete="new-password" placeholder="Nhập lại mật khẩu mới"
                         style="width:100%;background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:12px;padding:0.75rem 3rem 0.75rem 1rem;font-size:14px;color:#1e293b;outline:none;font-family:inherit;"
                         oninput="this.style.borderColor='#4F8EC9'">
                     <button type="button" class="password-toggle-btn" onclick="toggleCpwVisibility('cpwConfirm','cpwConfirmIcon')" style="right:0.75rem;">
@@ -317,7 +286,7 @@ function toggleCpwVisibility(inputId, iconId) {
     if (!input || !btn) return;
     const hidden = input.type === 'password';
     input.type = hidden ? 'text' : 'password';
-    btn.innerHTML = `<i data-lucide="${hidden ? 'eye' : 'eye-off'}" id="${iconId}" style="width:18px;height:18px;"></i>`;
+    btn.innerHTML = `<i data-lucide="${hidden ? 'eye' : 'eye-off'}" id="${escapeHtml(iconId)}" style="width:18px;height:18px;"></i>`;
     lucide.createIcons();
 }
 
@@ -339,15 +308,9 @@ async function submitChangePassword() {
     if (newPassword !== confirmPassword) { showErr('Xác nhận mật khẩu không khớp.'); return; }
     if (btn) { btn.disabled = true; btn.textContent = 'Đang cập nhật...'; }
     try {
-        if (supabaseReady) {
-            const { error } = await db.auth.updateUser({ password: newPassword });
-            if (error) throw error;
-        } else {
-            const userIndex = localUsersDb.findIndex(u => u.email === currentUser.email);
-            if (userIndex === -1) throw new Error('Không tìm thấy tài khoản.');
-            await setLocalPassword(localUsersDb[userIndex], newPassword);
-            localStorage.setItem('mental_health_users', JSON.stringify(localUsersDb));
-        }
+        if (!supabaseReady) throw new Error('Không kết nối được máy chủ xác thực.');
+        const { error } = await db.auth.updateUser({ password: newPassword });
+        if (error) throw error;
         const saved = getSavedCredentials();
         if (saved && saved.email === currentUser.email) saveCredentials(currentUser.email);
         showSuc('Đổi mật khẩu thành công!');
@@ -383,43 +346,33 @@ async function saveResult(scores) {
         cynicism: scores.cynicism, academic_efficacy: scores.academicEfficacy
     };
     lastSaveOk = true;
-    if (supabaseReady) {
-        if (currentUser?.id) record.user_id = currentUser.id;
-        try {
-            const { error } = await db.from('survey_results').insert([record]);
-            if (error) { console.error('Lỗi lưu Supabase:', error.message); lastSaveOk = false; }
-        } catch (err) {
-            console.error('Lỗi lưu Supabase:', err.message);
-            lastSaveOk = false;
-        }
+    if (!supabaseReady) {
+        lastSaveOk = false;
+        return;
     }
-    // Always save to localStorage history
-    if (currentUser && !currentUser.isIncognito && currentUser.email) {
-        saveToHistory(currentUser.email, scores);
+    if (currentUser?.id) record.user_id = currentUser.id;
+    try {
+        const { error } = await db.from('survey_results').insert([record]);
+        if (error) { console.error('Lỗi lưu Supabase:', error.message); lastSaveOk = false; }
+    } catch (err) {
+        console.error('Lỗi lưu Supabase:', err.message);
+        lastSaveOk = false;
     }
-    // Community stats
-    communityStats.count += 1;
-    communityStats.emotionalExhaustion += scores.emotionalExhaustion;
-    communityStats.cynicism += scores.cynicism;
-    communityStats.academicEfficacy += scores.academicEfficacy;
-    communityStats.stress += scores.stress;
-    communityStats.anxiety += scores.anxiety;
-    communityStats.depression += scores.depression;
-    localStorage.setItem('mental_health_survey_v2', JSON.stringify(communityStats));
 }
 
 async function loadCommunityStats() {
     if (!supabaseReady) return;
     try {
-        const { data, error } = await db.from('survey_results').select('*');
-        if (error || !data || data.length === 0) return;
-        let totalEE = 0, totalCY = 0, totalAE = 0, totalST = 0, totalAX = 0, totalDE = 0;
-        data.forEach(row => {
-            totalEE += row.emotional_exhaustion || 0; totalCY += row.cynicism || 0;
-            totalAE += row.academic_efficacy || 0; totalST += row.stress || 0;
-            totalAX += row.anxiety || 0; totalDE += row.depression || 0;
-        });
-        communityStats = { count: data.length, emotionalExhaustion: totalEE, cynicism: totalCY, academicEfficacy: totalAE, stress: totalST, anxiety: totalAX, depression: totalDE };
+        // Gọi hàm RPC chỉ trả về TỔNG (không trả từng dòng dữ liệu thô/tên học sinh).
+        // Hàm get_community_stats() cần được tạo trước trong Supabase (xem SQL đã cung cấp).
+        const { data, error } = await db.rpc('get_community_stats');
+        if (error || !data || !data[0] || data[0].cnt === 0) return;
+        const s = data[0];
+        communityStats = {
+            count: s.cnt,
+            emotionalExhaustion: s.sum_ee, cynicism: s.sum_cy, academicEfficacy: s.sum_ae,
+            stress: s.sum_st, anxiety: s.sum_ax, depression: s.sum_de
+        };
     } catch (err) { console.error('Lỗi tải thống kê:', err.message); }
 }
 
@@ -636,8 +589,8 @@ function renderAuth() {
                         </span>
                     </div>
 
-                    ${authError ? `<div class="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i><span>${authError}</span></div>` : ''}
-                    ${authSuccess ? `<div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i><span>${authSuccess}</span></div>` : ''}
+                    ${authError ? `<div class="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i><span>${escapeHtml(authError)}</span></div>` : ''}
+                    ${authSuccess ? `<div class="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4 shrink-0"></i><span>${escapeHtml(authSuccess)}</span></div>` : ''}
 
                     <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
                         ${!isLogin ? `<div>
@@ -647,13 +600,13 @@ function renderAuth() {
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Email</label>
                             <input type="email" name="email" required placeholder="your@email.com" 
-                                value="${isLogin && saved ? saved.email : ''}"
+                                value="${escapeHtml(isLogin && saved ? saved.email : '')}"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Mật khẩu</label>
                             <div class="password-wrapper">
-                                <input type="password" id="passwordInput" name="password" required minlength="6" 
+                                <input type="password" id="passwordInput" name="password" autocomplete="current-password" required minlength="6"
                                     placeholder="Tối thiểu 6 ký tự"
                                     value=""
                                     class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
@@ -700,15 +653,16 @@ function renderHeader() {
     let userHtml = '';
     if (currentUser) {
         const displayName = getFirstName(currentUser.name);
+        const avatarSeed = encodeURIComponent(currentUser.name || 'user');
         const avatarUrl = currentUser.isIncognito
-            ? 'https://api.dicebear.com/10.x/big-ears/svg?seed=empn5xvz' + currentUser.name + '&backgroundColor=4F8EC9'
-            : 'https://api.dicebear.com/10.x/avataaars/svg?seed=8j8c4vl3' + currentUser.name + '&backgroundColor=4F8EC9';
+            ? 'https://api.dicebear.com/10.x/big-ears/svg?seed=empn5xvz' + avatarSeed + '&backgroundColor=4F8EC9'
+            : 'https://api.dicebear.com/10.x/avataaars/svg?seed=8j8c4vl3' + avatarSeed + '&backgroundColor=4F8EC9';
         userHtml = `
             <div class="flex items-center gap-2 bg-white rounded-full pr-3 pl-1.5 py-1.5 border border-slate-100 shadow-sm">
-                <img src="${avatarUrl}" alt="Avatar" class="w-8 h-8 rounded-full border border-slate-100 bg-slate-50">
+                <img src="${escapeHtml(avatarUrl)}" alt="Avatar" class="w-8 h-8 rounded-full border border-slate-100 bg-slate-50">
                 <div class="text-left mr-1 min-w-0">
                     <p class="text-[9px] font-bold text-slate-400 leading-none uppercase tracking-wider mb-0.5">${currentUser.isIncognito ? 'Ẩn danh' : 'Xin chào,'}</p>
-                    <p class="text-sm font-black text-slate-800 leading-none max-w-[130px] truncate">${currentUser.isIncognito ? currentUser.name : displayName + '!'}</p>
+                    <p class="text-sm font-black text-slate-800 leading-none max-w-[130px] truncate">${escapeHtml(currentUser.isIncognito ? currentUser.name : displayName + '!')}</p>
                 </div>
                 ${!currentUser.isIncognito ? `
                 <div class="flex items-center gap-1 border-l border-slate-100 pl-2 ml-1">
@@ -846,7 +800,7 @@ function renderMiniHistory(latest, prev) {
                 <span class="score-badge" style="background:${mbiLvl.hex}18;color:${mbiLvl.hex};">${mbiPct}%</span>
             </div>
         </div>
-        <p class="text-[10px] text-slate-400 font-semibold mt-3 text-right">Lần khảo sát: ${dateStr}</p>`;
+        <p class="text-[10px] text-slate-400 font-semibold mt-3 text-right">Lần khảo sát: ${escapeHtml(dateStr)}</p>`;
 }
 
 // ===== RENDER QUIZ =====
@@ -1028,10 +982,10 @@ function renderResult() {
     }).join('');
 
     const cloudMsg = !supabaseReady
-        ? '<span class="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-4 py-1.5 text-xs font-bold text-slate-500"><i data-lucide="save" class="w-3.5 h-3.5"></i> Đã lưu trên máy này</span>'
+        ? '<span class="inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-4 py-1.5 text-xs font-bold text-rose-700"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Chưa lưu — máy chủ không khả dụng</span>'
         : lastSaveOk
             ? '<span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-4 py-1.5 text-xs font-bold text-emerald-700"><i data-lucide="cloud" class="w-3.5 h-3.5"></i> Đã lưu</span>'
-            : '<span class="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-1.5 text-xs font-bold text-amber-700"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Lưu thất bại — kết quả chỉ lưu tạm trên máy này</span>';
+            : '<span class="inline-flex items-center gap-2 rounded-full bg-rose-50 border border-rose-200 px-4 py-1.5 text-xs font-bold text-rose-700"><i data-lucide="cloud-off" class="w-3.5 h-3.5"></i> Chưa lưu — lỗi máy chủ</span>';
 
     const div = communityStats.count > 0 ? communityStats.count : 1;
 
@@ -1480,10 +1434,8 @@ function togglePasswordVisibility() {
 }
 
 // ===== ADMIN CONFIG =====
-const ADMIN_CREDENTIALS = {
-    email: 'glthpt@gmail.com',
-    password: 'GiaLoc@Admin2025'
-};
+// KHÔNG còn mật khẩu admin nào nằm trong file này. Đăng nhập admin do Supabase Auth
+// xác thực ở phía server; quyền đọc dữ liệu do RLS + is_admin() kiểm soát (xem SQL đã cấu hình).
 let adminMode = false;
 let adminData = [];
 let adminLoading = false;
@@ -1496,41 +1448,46 @@ async function handleAdminLogin(e) {
     const fd = new FormData(e.target);
     const email = fd.get('adminEmail').trim();
     const password = fd.get('adminPassword');
+    const errEl = document.getElementById('adminLoginError');
+    const showAdminErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; } };
 
-    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-        adminMode = true;
-        loadAdminData();
-    } else {
-        const errEl = document.getElementById('adminLoginError');
-        if (errEl) { errEl.textContent = 'Sai thông tin đăng nhập!'; errEl.style.display = 'block'; }
+    if (!supabaseReady) { showAdminErr('Không kết nối được máy chủ.'); return; }
+
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error || !data?.user) { showAdminErr('Sai thông tin đăng nhập!'); return; }
+
+    // Đăng nhập được vào Supabase Auth không có nghĩa là admin — kiểm tra thêm
+    // qua RPC is_admin() (dựa trên bảng admin_users, được RLS bảo vệ ở phía server).
+    const { data: isAdmin, error: checkErr } = await db.rpc('is_admin');
+    if (checkErr || isAdmin !== true) {
+        await db.auth.signOut();
+        showAdminErr('Tài khoản này không có quyền quản trị.');
+        return;
     }
+
+    adminMode = true;
+    loadAdminData();
+}
+
+async function handleAdminLogout() {
+    if (supabaseReady) { try { await db.auth.signOut(); } catch (e) { } }
+    adminMode = false;
+    renderAdminPage();
 }
 
 async function loadAdminData() {
     adminLoading = true;
     renderAdminPage();
-    if (supabaseReady) {
-        try {
-            const { data, error } = await db.from('survey_results').select('*').order('created_at', { ascending: false });
-            if (!error && data) adminData = data;
-        } catch (err) { console.error('Admin load error:', err); }
-    } else {
+    if (!supabaseReady) {
         adminData = [];
-        const users = JSON.parse(localStorage.getItem('mental_health_users') || '[]');
-        users.forEach(u => {
-            const hist = getUserHistory(u.email);
-            hist.forEach(h => {
-                adminData.push({
-                    user_name: u.name || u.email,
-                    created_at: h.date,
-                    stress: h.scores.stress, anxiety: h.scores.anxiety, depression: h.scores.depression,
-                    emotional_exhaustion: h.scores.emotionalExhaustion,
-                    cynicism: h.scores.cynicism, academic_efficacy: h.scores.academicEfficacy
-                });
-            });
-        });
-        adminData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        adminLoading = false;
+        renderAdminPage();
+        return;
     }
+    try {
+        const { data, error } = await db.from('survey_results').select('*').order('created_at', { ascending: false });
+        if (!error && data) adminData = data;
+    } catch (err) { console.error('Admin load error:', err); }
     adminLoading = false;
     renderAdminPage();
 }
@@ -1566,7 +1523,7 @@ function exportAdminCSV() {
     const rows = data.map(r => {
         const mbi = getMbiRiskPct({ emotionalExhaustion: r.emotional_exhaustion || 0, cynicism: r.cynicism || 0, academicEfficacy: r.academic_efficacy || 0 });
         return [
-            '"' + (r.user_name || 'Ẩn danh').replace(/"/g, '') + '"',
+            csvCell(r.user_name || 'Ẩn danh'),
             r.created_at ? new Date(r.created_at).toLocaleString('vi-VN') : '',
             (r.stress || 0) * 2, (r.anxiety || 0) * 2, (r.depression || 0) * 2,
             getLevelConfig('stress', r.stress || 0).label,
@@ -1574,9 +1531,9 @@ function exportAdminCSV() {
             getLevelConfig('depression', r.depression || 0).label,
             r.emotional_exhaustion || 0, r.cynicism || 0, r.academic_efficacy || 0,
             getMbiLevelConfig(mbi).label, mbi + '%'
-        ].join(',');
+        ].map(csvCell).join(',');
     });
-    const csv = [headers.join(','), ...rows].join('\n');
+    const csv = [headers.map(csvCell).join(','), ...rows].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'ket_qua_khao_sat_gia_loc.csv'; a.click();
@@ -1606,7 +1563,7 @@ function renderAdminPage() {
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Mật khẩu</label>
-                            <input type="password" name="adminPassword" required placeholder="Nhập mật khẩu"
+                            <input type="password" name="adminPassword" autocomplete="current-password" required placeholder="Nhập mật khẩu"
                                 class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>
                         <button type="submit" class="btn-primary w-full" style="border-radius:14px;padding:0.9rem;">
@@ -1657,7 +1614,7 @@ function renderAdminPage() {
         const isAlert = isAttentionLevel(sL.label) || isAttentionLevel(aL.label) || isAttentionLevel(dL.label) || isAttentionLevel(mbiLvl.label);
         return `<tr style="border-bottom:1px solid #F1F5F9;background:${isAlert ? '#FFFBEB' : '#fff'};">
             <td style="padding:10px 16px;font-size:12px;font-weight:700;color:#1e293b;white-space:nowrap;">
-                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isAlert ? '#F43F5E' : '#10B981'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>${r.user_name || 'Ẩn danh'}
+                <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${isAlert ? '#F43F5E' : '#10B981'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>${escapeHtml(r.user_name) || 'Ẩn danh'}
             </td>
             <td style="padding:10px 16px;font-size:11px;color:#111827;white-space:nowrap;">${dateStr}<br><span style="font-size:10px;color:#111827;">${timeStr}</span></td>
             <td style="padding:10px 16px;text-align:center;">${mkBadge(sL.label, sL.hex)}<br><span style="font-size:10px;color:#111827;font-weight:600;">${(r.stress || 0) * 2}/42</span></td>
@@ -1702,7 +1659,7 @@ function renderAdminPage() {
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
                     <button onclick="loadAdminData()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Làm mới</button>
                     <button onclick="exportAdminCSV()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#10B981;border-color:#BBF7D0;background:#F0FDF4;"><i data-lucide="download" style="width:13px;height:13px;"></i> Xuất CSV</button>
-                    <button onclick="adminMode=false;renderAdminPage();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#F43F5E;border-color:#FECDD3;background:#FFF1F2;"><i data-lucide="log-out" style="width:13px;height:13px;"></i> Đăng xuất</button>
+                    <button onclick="handleAdminLogout()" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;color:#F43F5E;border-color:#FECDD3;background:#FFF1F2;"><i data-lucide="log-out" style="width:13px;height:13px;"></i> Đăng xuất</button>
                     <button onclick="window.location.hash='';step='auth';renderApp();" class="btn-ghost" style="font-size:11px;padding:0.45rem 0.85rem;gap:5px;"><i data-lucide="arrow-left" style="width:13px;height:13px;"></i> Trang HS</button>
                 </div>
             </div>
@@ -1714,7 +1671,7 @@ function renderAdminPage() {
             <div style="background:#fff;border-radius:20px;border:1px solid rgba(79,142,201,0.1);box-shadow:0 4px 24px rgba(79,142,201,0.08);padding:1.25rem;">
                 <div style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;">
                     <div style="position:relative;flex:1;min-width:160px;">
-                        <input type="text" id="adminSearchInput" placeholder="Tìm theo tên học sinh..." value="${adminSearch}"
+                        <input type="text" id="adminSearchInput" placeholder="Tìm theo tên học sinh..." value="${escapeHtml(adminSearch)}"
                             oninput="adminSearch=this.value;renderAdminPage();"
                             style="width:100%;padding:0.6rem 0.75rem;border:1.5px solid #E2E8F0;border-radius:12px;font-size:13px;font-family:inherit;outline:none;background:#F8FAFC;color:#1e293b;box-sizing:border-box;">
                     </div>
@@ -1770,7 +1727,7 @@ function renderAdminPage() {
 }
 
 // ===== KHỞI CHẠY ỨNG DỤNG =====
-// Truy cập index.html#admin để vào Trang Quản Trị (vẫn cần đăng nhập riêng bằng ADMIN_CREDENTIALS).
+// Truy cập index.html#admin để vào Trang Quản Trị (đăng nhập bằng tài khoản Supabase Auth có trong bảng admin_users).
 if (window.location.hash === '#admin') {
     renderAdminPage();
 } else {
