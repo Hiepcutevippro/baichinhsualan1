@@ -759,10 +759,10 @@ function renderStart() {
         </div>`;
 }
 
-// ===== RENDER START HISTORY (trang bắt đầu — tối đa 5 lần gần nhất) =====
+// ===== RENDER START HISTORY (trang bắt đầu — tối đa 10 lần gần nhất) =====
 function renderStartHistory(history) {
     if (!history || history.length === 0) return '';
-    const MAX_SHOW = 5;
+    const MAX_SHOW = 10;
     const entries = history.slice(0, MAX_SHOW);
 
     // Sparklines xu hướng (chỉ khi có ≥2 lần)
