@@ -1,8 +1,3 @@
-/* ============================================================
-   style.css — Khảo Sát Sức Khỏe Tâm Lý — THPT Gia Lộc
-   PHIÊN BẢN MỚI: Giao diện hiện đại, thẻ rút gọn, lịch sử
-   ============================================================ */
-
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 :root {
@@ -768,7 +763,7 @@ main section>div {
     overflow: hidden;
 }
 
-/* ===== FINAL UI REFINEMENTS ===== */
+/* ===== UI REFINEMENTS ===== */
 body {
     color: #173247;
     -webkit-font-smoothing: antialiased;
