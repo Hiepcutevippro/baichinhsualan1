@@ -1,8 +1,3 @@
-// ============================================================
-//  script.js — THPT Gia Lộc — Khảo Sát Tâm Lý
-//  PHIÊN BẢN MỚI: Lịch sử, Lưu mật khẩu, Thẻ rút gọn, UI mới
-// ============================================================
-
 const SUPABASE_URL = 'https://iwncqexhxnflcmrovfga.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_vdDbdvfTImKTM_WHhM8POw_-WrvjCZj';
 let db = null;
@@ -404,8 +399,6 @@ function getLevelConfig(scale, rawScore) {
 }
 
 // Lời khuyên riêng cho từng thang đo (Stress / Lo âu / Trầm cảm / Burnout) ở từng mức độ.
-// Trước đây dùng chung 1 hàm getAdvice(label) cho cả 3 thẻ DASS -> thẻ "Trầm cảm" và "Lo âu"
-// bị hiển thị nhầm câu văn viết riêng cho "Stress" (vd. "dấu hiệu căng thẳng nhẹ") ở mức Nhẹ.
 const ADVICE_TEXT = {
     stress: {
         'Tốt': 'Bạn đang duy trì trạng thái tâm lý khá ổn định. Hãy tiếp tục ngủ đủ giấc, vận động nhẹ và giữ kết nối với bạn bè.',
@@ -946,17 +939,11 @@ function renderResult() {
     const adviceScale = mbiCountsForBanner ? 'burnout' : overallState.id;
     const adviceColor = getGaugeBandColor(adviceLabel);
     const adviceIcon = getIconForLabel(adviceLabel);
-    // === FIX SAI LOGIC (banner "Tốt" nhưng vẫn cảnh báo) ===
-    // TRƯỚC ĐÂY: banner to ở đầu trang ("Trạng thái tinh thần tổng quát") chỉ lấy overallState
-    // -> tức CHỈ tính DASS-21 (Stress/Lo âu/Trầm cảm), không tính tổng điểm MBI-SS.
-    // Trong khi đó khung "Lời khuyên" ngay bên dưới lại lấy adviceLabel = mức NẶNG NHẤT giữa
-    // DASS-21 và MBI-SS. Hậu quả: học sinh có DASS-21 = "Tốt" nhưng tổng điểm MBI-SS = "Nặng" vẫn thấy
-    // banner to màu XANH ghi "Tốt", nhưng ngay dưới lại là khung màu ĐỎ/CAM với nội dung cảnh báo
-    // burnout -> hiển thị MÂU THUẪN ngay trên cùng 1 màn hình, đúng như lỗi "đạt mức tốt nhưng
-    // web vẫn cảnh báo". Nay banner tổng quan dùng CHUNG đúng 1 biến (adviceLabel/adviceColor/
-    // adviceIcon) với khung lời khuyên, để 2 khu vực không bao giờ "nói ngược nhau" nữa. Hai
-    // thanh gauge chi tiết bên dưới (DASS-21 và MBI-SS) vẫn giữ nguyên số liệu riêng của từng
-    // thang để học sinh biết chính xác điều gì đang kéo mức tổng quan xuống.
+    // Banner tổng quan ở đầu trang dùng CHUNG đúng 1 biến (adviceLabel/adviceColor/adviceIcon)
+    // với khung "Lời khuyên" bên dưới, để 2 khu vực này không bao giờ hiển thị mâu thuẫn nhau
+    // (vd. banner ghi "Tốt" nhưng khung lời khuyên lại cảnh báo burnout nặng). Hai thanh gauge
+    // chi tiết bên dưới (DASS-21 và MBI-SS) vẫn giữ nguyên số liệu riêng của từng thang để học
+    // sinh biết chính xác điều gì đang kéo mức tổng quan xuống.
 
     // MBI cards
     const mbiHTML = MBI_ROWS.map(row => {
@@ -1370,8 +1357,7 @@ function initDonutChart() {
     // Dùng chung getMbiRiskPct() (cùng công thức với bảng Admin, lịch sử khảo sát...)
     // thay vì tính lại % ở đây, để biểu đồ donut luôn khớp 100% với các nơi khác.
     const riskPct = getMbiRiskPct(currentScores);
-    // "An toàn" chỉ khi nguy cơ tổng = 0%, tức cả 3 tiểu mục đều ở mức tốt nhất
-    // (trước đây chỉ xét Kiệt quệ=0 và Hoài nghi=0, bỏ sót trường hợp Hiệu quả học tập thấp).
+    // "An toàn" chỉ khi nguy cơ tổng = 0%, tức cả 3 tiểu mục đều ở mức tốt nhất.
     const isSafe = riskPct === 0;
     const safeColor = '#CBD5E1';
 
@@ -1382,10 +1368,8 @@ function initDonutChart() {
     const labelEl = document.getElementById('donutCenterLabel');
     if (labelEl) { labelEl.textContent = isSafe ? 'An toàn' : mbiLvl.label; labelEl.style.color = isSafe ? safeColor : mbiLvl.hex; }
 
-    // Phân mảnh donut: mỗi tiểu mục chiếm đúng % rủi ro của chính nó (không chia 3).
-    // Trước đây chia /3 (công thức trung bình) khiến khi chỉ 1 tiểu mục max thì donut
-    // chỉ tô 33% nguy cơ dù riskPct tổng = 100% — không khớp với số to ở giữa.
-    // Giờ dùng: mỗi tiểu mục = % riêng của nó, "Chưa ảnh hưởng" = phần còn lại tới 100%.
+    // Phân mảnh donut: mỗi tiểu mục chiếm đúng % rủi ro của chính nó (không chia 3),
+    // "Chưa ảnh hưởng" = phần còn lại tới 100%.
     const exhRaw = Math.round((exhaustion / 30) * 100);
     const cynRaw = Math.round((cynicism / 24) * 100);
     const lowRaw = Math.round((lowEfficacy / 36) * 100);
@@ -1396,10 +1380,7 @@ function initDonutChart() {
     const totalRaw = exhRaw + cynRaw + lowRaw;
     const exhPct = isSafe ? 0 : Math.round((exhRaw / (totalRaw || 1)) * riskPct);
     const cynPct = isSafe ? 0 : Math.round((cynRaw / (totalRaw || 1)) * riskPct);
-    // Trước đây lowPct = riskPct - exhPct - cynPct (phần dư), nên khi lowRaw thực tế = 0
-    // nhưng exhPct/cynPct bị làm tròn hụt, phần dư đó bị gán nhầm hết cho "Mất hiệu quả HT"
-    // dù tiểu mục này không hề đóng góp vào rủi ro. Giờ tính lowPct theo đúng tỉ lệ lowRaw
-    // của chính nó, giống hệt cách tính exhPct/cynPct ở trên.
+    // lowPct tính theo đúng tỉ lệ lowRaw của chính nó, giống cách tính exhPct/cynPct ở trên.
     const lowPct = isSafe ? 0 : Math.round((lowRaw / (totalRaw || 1)) * riskPct);
     const safePct = Math.max(0, 100 - exhPct - cynPct - lowPct);
 
@@ -1642,7 +1623,6 @@ function renderAdminPage() {
 
     // Ghi nhớ ô đang được gõ (và vị trí con trỏ) trước khi vẽ lại toàn trang,
     // vì root.innerHTML sẽ tạo lại toàn bộ DOM và làm mất focus hiện tại.
-    // Đây là nguyên nhân khiến ô tìm kiếm trước đây chỉ gõ được 1 ký tự rồi bị mất focus.
     const prevActive = document.activeElement;
     const focusedId = prevActive && prevActive.id ? prevActive.id : null;
     const caretStart = focusedId && typeof prevActive.selectionStart === 'number' ? prevActive.selectionStart : null;
