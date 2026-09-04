@@ -593,7 +593,7 @@ function renderAuth() {
                     <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
                         ${!isLogin ? `<div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Tên hiển thị</label>
-                            <input type="text" name="name" required placeholder="Ví dụ: Bhiep dz" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+                            <input type="text" name="name" required placeholder="Nhập tên hiển thị của bạn" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
                         </div>` : ''}
                         <div>
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-0.5">Email</label>
@@ -674,14 +674,15 @@ function renderHeader() {
             </div>`;
     }
 
+    const answeredCount = Object.keys(answers).length;
     const progressBar = step === 'quiz' ? `
         <div class="w-full bg-white border-t border-slate-100 px-4 py-2.5">
             <div class="mx-auto w-full max-w-5xl flex items-center gap-4">
-                <span class="text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap shrink-0">${currentIndex + 1} / ${QUESTIONS.length}</span>
+                <span class="text-xs font-black uppercase tracking-widest text-slate-400 whitespace-nowrap shrink-0">${answeredCount} / ${QUESTIONS.length}</span>
                 <div class="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div class="h-full rounded-full" style="width:${((currentIndex + 1) / QUESTIONS.length) * 100}%; background:linear-gradient(90deg,#4F8EC9,#42C8A8);"></div>
+                    <div class="h-full rounded-full" style="width:${(answeredCount / QUESTIONS.length) * 100}%; background:linear-gradient(90deg,#4F8EC9,#42C8A8);"></div>
                 </div>
-                <span class="text-xs font-black text-slate-400 shrink-0">${Math.round(((currentIndex + 1) / QUESTIONS.length) * 100)}%</span>
+                <span class="text-xs font-black text-slate-400 shrink-0">${Math.round((answeredCount / QUESTIONS.length) * 100)}%</span>
             </div>
         </div>` : '';
 
